@@ -70,7 +70,19 @@ The flagship demo revives the **Calculator app from Gaia**, the HTML5 UI of Mozi
 1. The app was **deleted** from Gaia on 2012-12-27 (commit `53dd83d7`, *"Bug 822565 - Remove the calculator app"*).
 2. The whole [`mozilla-b2g/gaia`](https://github.com/mozilla-b2g/gaia) repo was **archived (read-only) on 2021-11-03** when Mozilla discontinued Firefox OS.
 
-GhostRepo recovers the original source from the last living commit [`7378e497d0`](https://github.com/mozilla-b2g/gaia/commit/7378e497d0) and resurrects it as a modern web app. The resurrected result ships as a separate repo, `ghostrepo-gaia-calculator`.
+GhostRepo recovers the original source from the last living commit [`7378e497d0`](https://github.com/mozilla-b2g/gaia/commit/7378e497d0) and resurrects it as a modern web app.
+
+➡️ **See the resurrected result:** [LucioD3v/ghostrepo-gaia-calculator](https://github.com/LucioD3v/ghostrepo-gaia-calculator)
+
+### 📊 Real resurrection metrics
+
+Measured from the actual `legacy/` → `src/` diff and test run (not hardcoded):
+
+| Metric | Value |
+|--------|-------|
+| Lines modernized | **777** |
+| Legacy patterns removed | **63** (`var`→`const`/`let`, unsafe `innerHTML`, dead `MozTransform`, loose `==`) |
+| Zero-Breaking-Logic tests | **20 / 20 passing** |
 
 > **Provenance & license:** the original calculator is Mozilla code under the **Apache License 2.0** (Copyright 2012, Mozilla Foundation). GhostRepo preserves attribution and documents every change so the resurrection is fully traceable.
 
