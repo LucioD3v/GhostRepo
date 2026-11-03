@@ -1,0 +1,13 @@
+# GhostRepo — working areas that must NOT be committed to the tool repo
+
+# Local "operating room": cloned legacy targets (includes huge upstream .git histories)
+targets/
+
+# Resurrected output lives in its own separate repository
+ghostrepo-gaia-calculator/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
