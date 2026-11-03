@@ -72,7 +72,7 @@ The flagship demo revives the **Calculator app from Gaia**, the HTML5 UI of Mozi
 
 GhostRepo recovers the original source from the last living commit [`7378e497d0`](https://github.com/mozilla-b2g/gaia/commit/7378e497d0) and resurrects it as a modern web app. The resurrected result ships as a separate repo, `ghostrepo-gaia-calculator`.
 
-> **Provenance & license:** the original calculator is Mozilla code under **MPL-2.0**. GhostRepo preserves attribution and documents every change so the resurrection is fully traceable.
+> **Provenance & license:** the original calculator is Mozilla code under the **Apache License 2.0** (Copyright 2012, Mozilla Foundation). GhostRepo preserves attribution and documents every change so the resurrection is fully traceable.
 
 ---
 
