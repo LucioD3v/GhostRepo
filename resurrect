@@ -1,0 +1,123 @@
+#!/usr/bin/env node
+// resurrect — the executable heart of GhostRepo.
+//
+// Scans a legacy JavaScript / web repository for technical debt, safely
+// modernizes it with AST-based codemods, and writes resurrection-report.json
+// from REAL measured metrics only.
+//
+// Scope: JavaScript / web legacy code ONLY. See docs/RESURRECT-CLI.md.
+//
+// Usage:
+//   ./resurrect <repo-url> [--path <subfolder>]      (POSIX)
+//   node resurrect <repo-url> [--path <subfolder>]   (Windows / any platform)
+
+import { parseArgs } from 'node:util';
+import { run } from './src/pipeline.js';
+
+const USAGE = `👻 resurrect — GhostRepo legacy JavaScript resurrection CLI
+
+Scope: JavaScript / web legacy code ONLY. Does not modernize other languages.
+
+Usage:
+  resurrect <repo-url> [--path <subfolder>] [--out <file>] [--out-dir <dir>]
+  node resurrect <repo-url> [--path <subfolder>]
+
+Arguments:
+  <repo-url>          Git URL (https://, http://, git@, ssh://) or a local path.
+
+Options:
+  --path <subfolder>  Sparse-checkout only this subfolder of the target repo.
+                      Must be relative, with no leading '/' and no '..' segments.
+  --out <file>        Report output path (default: resurrection-report.json).
+  --out-dir <dir>     Where to write the resurrected code
+                      (default: resurrected/<repo-name>; must be empty).
+  -h, --help          Show this help and exit.
+
+What it does (4-phase pipeline):
+  1. Necromancy    shallow-clone the target and scan .js files for debt.
+  2. Exorcism      rewrite 'element.innerHTML = <plain text>' -> 'textContent'.
+                   Dynamic innerHTML values are flagged for review, never rewritten.
+  3. Transmutation rewrite 'var' -> const/let and '==' / '!=' -> '===' / '!=='
+                   ONLY where the rewrite is provably behavior-preserving.
+  4. Resurrection  write the resurrected code and resurrection-report.json with
+                   real before/after metrics and every skipped site + reason.
+
+What it does NOT do:
+  - Modernize non-JavaScript languages.
+  - Open pull requests (v1 stops at the report).
+  - Use regex string replacement (all rewrites go through an AST).
+  - Modify your original repo in place (it works on a clone and writes the
+    result to --out-dir).
+`;
+
+function fail(message, exitCode) {
+  process.stderr.write(`resurrect: ${message}\n`);
+  process.exit(exitCode);
+}
+
+function validatePath(p) {
+  if (p == null) return null;
+  if (p === '') fail('--path must not be empty', 2);
+  if (p.startsWith('/') || p.startsWith('\\')) {
+    fail('--path must be relative (no leading "/")', 2);
+  }
+  if (/^[a-zA-Z]:/.test(p)) fail('--path must be relative (no drive letter)', 2);
+  const segments = p.split(/[\\/]+/);
+  if (segments.includes('..')) fail('--path must not contain ".." segments', 2);
+  return p;
+}
+
+const GIT_URL = /^(https?:\/\/|git@[^:]+:|ssh:\/\/)/i;
+
+function validateTarget(t) {
+  if (!t || t.trim() === '') fail('missing <repo-url>', 2);
+  if (GIT_URL.test(t)) return t;
+  // Otherwise it must look like / be a local path; the pipeline verifies it
+  // exists. Reject obviously malformed values (whitespace-only handled above).
+  return t;
+}
+
+function main() {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      allowPositionals: true,
+      options: {
+        path: { type: 'string' },
+        out: { type: 'string' },
+        'out-dir': { type: 'string' },
+        help: { type: 'boolean', short: 'h' },
+      },
+    });
+  } catch (e) {
+    fail(e.message, 2);
+    return;
+  }
+
+  const { values, positionals } = parsed;
+
+  if (values.help || positionals.length === 0) {
+    process.stdout.write(USAGE);
+    process.exit(values.help ? 0 : 2);
+  }
+
+  const target = validateTarget(positionals[0]);
+  const subpath = validatePath(values.path ?? null);
+
+  try {
+    const { reportPath, report, outDir } = run({
+      target,
+      subpath,
+      reportPath: values.out,
+      outDir: values['out-dir'],
+      log: (msg) => process.stderr.write(msg + '\n'),
+    });
+    process.stdout.write(`\n✨ Resurrected code written to ${outDir}\n`);
+    process.stdout.write(`✨ Report written to ${reportPath}\n`);
+    process.stdout.write(`   status: ${report.status}\n`);
+  } catch (e) {
+    fail(e.message || String(e), e.exitCode || 1);
+  }
+}
+
+main();

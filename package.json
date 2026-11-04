@@ -1,0 +1,19 @@
+{
+  "name": "ghostrepo-resurrect",
+  "version": "1.0.0",
+  "description": "GhostRepo resurrect CLI — scans and safely modernizes legacy JavaScript / web codebases with AST-based codemods, reporting real measured metrics only.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "resurrect": "resurrect"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "jscodeshift": "17.4.0"
+  }
+}
