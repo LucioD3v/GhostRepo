@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { countPatterns, walkJsFiles } from './scan.js';
 import { exorcise } from './exorcise.js';
 import { transmute } from './transmute.js';
-import { buildReport, writeReport } from './report.js';
+import { buildReport, writeReport, deriveRepository } from './report.js';
 
 const DEFAULT_REPORT = 'resurrection-report.json';
 
@@ -23,13 +23,18 @@ const DEFAULT_REPORT = 'resurrection-report.json';
  * @param {string} opts.target        repo URL or local path
  * @param {string|null} [opts.subpath] optional --path subfolder
  * @param {string} [opts.reportPath]  where to write the report
+ * @param {string} [opts.outDir]      where to write the resurrected code
  * @param {(msg:string)=>void} [opts.log]
- * @returns {{report:object, reportPath:string}}
+ * @returns {{report:object, reportPath:string, outDir:string}}
  */
 export function run(opts) {
   const log = opts.log || (() => {});
   const reportPath = opts.reportPath || path.resolve(process.cwd(), DEFAULT_REPORT);
   const subpath = opts.subpath || null;
+  const outDir = path.resolve(
+    opts.outDir || path.join('resurrected', deriveRepository(opts.target) || 'output'),
+  );
+  assertWritableOutDir(outDir);
 
   const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'resurrect-'));
   let cloneDir = path.join(workRoot, 'clone');
@@ -47,13 +52,24 @@ export function run(opts) {
       throw err;
     }
 
-    return processTree({
+    const result = processTree({
       scanRoot,
       targetUrl: opts.target,
       targetPath: subpath,
       reportPath,
       log,
     });
+
+    // Keep the resurrected code: copy the transformed tree out of the temp
+    // working directory before it is cleaned up (without the clone's .git).
+    log(`✨ Phase 4 (Resurrection): writing resurrected code to ${outDir}`);
+    fs.mkdirSync(path.dirname(outDir), { recursive: true });
+    fs.cpSync(scanRoot, outDir, {
+      recursive: true,
+      filter: (src) => path.basename(src) !== '.git',
+    });
+
+    return { ...result, outDir };
   } finally {
     // Clean the working directory; never leave temp clones behind.
     try {
@@ -156,6 +172,15 @@ export function processTree({ scanRoot, targetUrl, targetPath, reportPath, log =
   return { report, reportPath };
 }
 
+// Refuse to overwrite: the output dir must be absent or empty.
+function assertWritableOutDir(outDir) {
+  if (fs.existsSync(outDir) && fs.readdirSync(outDir).length > 0) {
+    const err = new Error(`output directory is not empty: ${outDir} (use --out-dir)`);
+    err.exitCode = 2;
+    throw err;
+  }
+}
+
 function countPatternsSafe(source) {
   try {
     countPatterns(source);
@@ -169,8 +194,9 @@ function countPatternsSafe(source) {
 // Uses a simple LCS-free symmetric difference of line multisets, which is a
 // conservative, deterministic measure of changed lines.
 function lineDiffCount(a, b) {
-  const aLines = a.split('\n');
-  const bLines = b.split('\n');
+  // Normalize line endings so CRLF vs LF never counts as a change.
+  const aLines = a.replace(/\r\n/g, '\n').split('\n');
+  const bLines = b.replace(/\r\n/g, '\n').split('\n');
 
   const countMap = new Map();
   for (const l of aLines) countMap.set(l, (countMap.get(l) || 0) + 1);
