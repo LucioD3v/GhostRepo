@@ -93,6 +93,7 @@ Measured from the actual `legacy/` → `src/` diff and test run (not hardcoded):
 ```
 GhostRepo/
 ├── README.md                          # you are here
+├── LICENSE                            # MIT
 └── .kiro/
     ├── specs/
     │   └── resurrect-pipeline.yaml     # the 4-phase pipeline definition
@@ -103,6 +104,14 @@ GhostRepo/
 ```
 
 > ⚠️ **Hackathon work in progress.** The pipeline definition, steering guide, and post-analysis hook are in place. The agent execution and the `resurrect` entry-point script are being built as part of the demo.
+
+---
+
+## 📜 License
+
+GhostRepo is released under the [MIT License](LICENSE).
+
+Resurrected projects keep their **original upstream license**. For example, the Firefox OS Calculator showcase remains under the Apache License 2.0 (Copyright 2012, Mozilla Foundation) in its own repository.
 
 ---
 
