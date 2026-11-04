@@ -6,6 +6,12 @@ targets/
 # Resurrected output lives in its own separate repository
 ghostrepo-gaia-calculator/
 
+# Internal workflow artifacts (agent reviews, verdicts) — not part of the tool
+.agents/
+
+# Devpost drafts / team docs — not part of the shipped project
+_devpost/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
