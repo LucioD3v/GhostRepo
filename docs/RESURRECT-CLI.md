@@ -74,8 +74,11 @@ out of scope.
 - Applies three SAFE, AST-based codemods (`var`→`const`/`let`, `==`/`!=`→
   `===`/`!==`, unsafe `innerHTML =` → `textContent =`).
 - Skips any transform it cannot prove safe, and records why.
+- Writes the resurrected code to `--out-dir` (default `resurrected/<repo>`;
+  refuses to overwrite a non-empty directory).
 - Writes `resurrection-report.json` with real before/after metrics, a real diff
-  line count, and a per-file summary.
+  line count (CRLF/LF-insensitive), and a per-file summary including every
+  skipped site with its reason and line number.
 - Prints usage via `--help`.
 
 ### What the CLI DOES NOT do (v1)
@@ -91,7 +94,8 @@ out of scope.
 - It does **not** touch or commit the gitignored working folders `targets/` or
   `ghostrepo-gaia-calculator/`.
 - It does **not** modify files in place in the user's original repo — it works
-  on a clone inside the tool's own working directory.
+  on a clone inside the tool's own working directory and copies the result to
+  `--out-dir`.
 
 ---
 
@@ -141,27 +145,27 @@ recorded as `skipped` with the parser error — they are **not** silently droppe
 
 **Goal:** remove dangerous and dead patterns.
 
-- **Unsafe `innerHTML` → `textContent`:** rewrite assignments of the form
-  `element.innerHTML = expr` to `element.textContent = expr`. This neutralizes
-  the XSS vector of assigning dynamic strings as HTML. The transform only fires
-  on *assignments* (`MemberExpression.property.name === 'innerHTML'` on the
-  left-hand side of an `=` `AssignmentExpression`), never on reads and never on
-  compound assignment (`+=`). The skip rule is **syntactic and decidable** — no
-  "intent" guessing:
+- **Unsafe `innerHTML` → `textContent`:** rewrite `element.innerHTML = rhs` to
+  `element.textContent = rhs` **only when `rhs` is provably plain text**.
+  `innerHTML` parses markup and decodes entities; `textContent` does not, so the
+  two are only equivalent for text with no `<` and no `&`. The rule is
+  syntactic and decidable:
 
   > For `element.innerHTML = <rhs>`:
-  > - If `<rhs>` is a string literal, OR a template literal with **no**
-  >   expressions, whose string value contains an HTML tag (matches the regex
-  >   `/<[a-zA-Z!/]/`), then **SKIP** and record reason `static-markup-literal`
-  >   — converting markup to `textContent` would change what the browser
-  >   renders.
-  > - Otherwise (a dynamic expression, OR a tag-free literal such as `'0'`),
-  >   **CONVERT** to `textContent`.
+  > - `<rhs>` is a string literal or expression-free template literal with no
+  >   `<` and no `&`, or a numeric / boolean literal → **CONVERT**.
+  > - `<rhs>` is such a literal but contains `<` or `&` → **SKIP**, reason
+  >   `markup-or-entity-literal` (e.g. `'<b>!</b>'`, `'&times;'`).
+  > - `<rhs>` is any other expression (variable, call, concatenation) →
+  >   **SKIP**, reason `dynamic-value-needs-review`. This is the real XSS sink,
+  >   but rewriting it could change what renders (e.g. `'<li>' + n + '</li>'`),
+  >   so it is surfaced for review instead of silently changed.
+  > - Compound assignment (`innerHTML +=`) → **SKIP**, reason
+  >   `compound-assignment`. Reads are never touched.
 
-  Applied to the showcase `calculator.js`, this converts both
-  `this.display.innerHTML = '0'` (tag-free literal — safe, desirable) and
-  `this.display.innerHTML = outval` (dynamic), and would skip only a literal
-  that actually contains tags such as `innerHTML = '<b>x</b>'`.
+  Applied to the showcase `calculator.js`, this converts
+  `this.display.innerHTML = '0'` and flags `this.display.innerHTML = outval`
+  for review.
 - **Dead vendor-prefixed APIs:** these are *reported* and counted in Phase 1 /
   Phase 4. v1 does not auto-rewrite them to their standard equivalents, because a
   safe rewrite requires per-API knowledge and risks changing behavior; instead
@@ -173,29 +177,26 @@ recorded as `skipped` with the parser error — they are **not** silently droppe
 
 **Goal:** modernize syntax while preserving behavior.
 
-- **`var` → `const` / `let`:** for each `var` declaration, decide between
-  `const` and `let` by analyzing whether the binding is ever reassigned within
-  its scope. No reassignment → `const`; otherwise `let`. Declarations that are
-  unsafe to convert (see Edge cases) are skipped and recorded.
-- **`==` → `===` and `!=` → `!==`:** rewrite loose equality
-  `BinaryExpression`s (operator `==` or `!=`) to their strict form. This is a
-  conservative, behavior-affecting change only when operands differ in type; it
-  is applied because strict equality is the project's stated modernization goal,
-  and the Zero-Breaking-Logic test fixture validates it does not change results
-  for the sample code. The **nullish-idiom skip** is broader than just `null`,
-  because the "matches null OR undefined" idiom is written against both
-  sentinels and the showcase file uses the `undefined` form:
+- **`var` → `const` / `let`:** converted only when the declaration provably
+  behaves the same as a block-scoped binding (all rules in §9). Then: every
+  declarator initialized and no binding ever written (assignment,
+  destructuring, `++`/`--`, `for-in`/`for-of` target) → `const`; otherwise
+  `let`. Anything unprovable is skipped with a reason.
+- **`==` → `===` and `!=` → `!==`:** loose and strict equality give identical
+  results **if and only if both operands have the same type**. The rewrite is
+  therefore applied only when both operand types are statically known and equal:
+  string / number / boolean literals, expression-free templates, `typeof x`
+  (always a string) and `!x` (always a boolean). Everything else is skipped:
 
-  > Skip the strict-equality conversion for any `==` / `!=`
-  > `BinaryExpression` in which **either** operand is: the `null` literal
-  > (`NullLiteral`), the identifier `undefined` (`Identifier` named
-  > `undefined`), or the `void 0` expression. Record reason `nullish-idiom`.
+  > - Either operand is `null`, `undefined` or `void 0` → reason
+  >   `nullish-idiom` (protects `currentNumber != undefined`).
+  > - Either operand's type is unknown → reason `operand-types-unknown`.
 
-  This preserves behavior for the real showcase line
-  `if (currentNumber != undefined)` — where `currentNumber` comes from
-  `stack.pop()` and can legitimately be `undefined` **or** `null`, so
-  converting to `!== undefined` would change the result. Every non-nullish
-  comparison is still converted.
+  This is what protects the showcase's
+  `isNumeric: (value - 0) == value && value.length > 0`. Strictened, it
+  compares a number with a string, is always `false`, and the calculator stops
+  accepting digits. The earlier "convert every non-nullish comparison" rule
+  broke exactly this line; `test/zero-breaking-logic.test.js` now guards it.
 
 ### Phase 4 — Resurrection (report with REAL metrics)
 
@@ -433,33 +434,47 @@ an aborted run is always safe to rerun.
 
 ## 9. Edge cases
 
-- **`var` in `for` loop init** (`for (var i = 0; ...)`): converting to `const`
-  is wrong (reassigned) and to `let` can change closure-capture semantics. v1
-  converts to `let` only when the loop body captures no closures over the
-  variable; otherwise skips with a reason.
-- **`var` redeclared in the same scope** (hoisting-dependent code): skip — a
-  naive `const`/`let` conversion would throw `SyntaxError` on redeclaration.
-- **`var` used before its declaration line** (relying on hoisting): skip, since
-  `const`/`let` are in the temporal dead zone.
-- **Nullish idiom (`x == null`, `x != undefined`, `x == void 0`, …):** matches
-  both `null` and `undefined`; skip the strict-equality conversion to preserve
-  behavior whenever either operand is `null`, the `undefined` identifier, or
-  `void 0` (reason `nullish-idiom`). This is the rule that protects the
-  showcase's `currentNumber != undefined`.
-- **`innerHTML = '<b>literal markup</b>'`:** when the right-hand side is a
-  static literal (string, or template with no expressions) whose value matches
-  `/<[a-zA-Z!/]/` (contains an HTML tag), rewriting to `textContent` would
-  change rendered output. v1 skips these with reason `static-markup-literal`.
-- **`innerHTML = '0'` (tag-free literal):** NOT skipped — a literal with no HTML
-  tag is converted to `textContent` like any dynamic RHS. The skip boundary is
-  the tag regex above, nothing else, so the real showcase assignment is
-  modernized rather than understated.
-- **`innerHTML +=`** (append): skip; `textContent +=` is not an equivalent
-  operation. Recorded.
-- **Reads of `innerHTML`** (`let h = el.innerHTML`): never touched; only
-  left-hand-side assignments are in scope.
+Every rule below is enforced by `test/zero-breaking-logic.test.js`, which runs
+the original and transformed code in a fresh VM over the same inputs and
+requires identical results.
+
+**`var` → `const` / `let` is skipped when:**
+
+| Reason | Example | Why |
+|---|---|---|
+| `global-scope` | top-level `var Calculator = {}` | `var` creates a global-object property shared by every classic `<script>`; `let`/`const` do not. |
+| `used-outside-block` | `if (a) { var x = 1; } return x;` | `let`/`const` are block-scoped → `ReferenceError`. |
+| `used-before-declaration` | `y = 5; var y;` | Temporal dead zone. |
+| `redeclared-in-scope` | `var a; … var a;` | Redeclaration is a `SyntaxError`. |
+| `shadows-parameter` | `function f(p) { var p = p || 1; }` | Redeclaring a parameter is a `SyntaxError`. |
+| `for-loop-init` | `for (var i = 0; …)` | Per-iteration bindings change closure capture. |
+| `loop-closure-capture` | `var v = i;` captured by a closure inside a loop | `let` gives each iteration its own binding. |
+| `loop-uninitialized` | `var seen;` inside a loop | `var` keeps the value across iterations; `let` resets it. |
+| `switch-case` | `case 1: var s = …; case 2: return s;` | Lexical bindings in a case are shared by the whole switch with a TDZ. |
+| `non-block-position` | `if (a) var x = 1;` | `let`/`const` cannot be a single-statement body. |
+| `dynamic-scope` | function uses `eval` or `with` | References cannot be resolved statically. |
+| `non-identifier-binding` | `var { a } = o;` | Destructuring analysis is out of v1 scope. |
+
+Reassignment detection covers plain and destructuring assignment, `++`/`--`
+and `for-in`/`for-of` targets. A false positive only downgrades `const` to
+`let`, which is always safe.
+
+**`==` / `!=`** — see Phase 3: converted only when both operand types are
+statically known and equal (`nullish-idiom`, `operand-types-unknown`).
+
+**`innerHTML`** — see Phase 2: converted only for provably plain text
+(`markup-or-entity-literal`, `dynamic-value-needs-review`,
+`compound-assignment`). Reads of `innerHTML` are never touched.
+
+**Other:**
+
+- **Line endings:** the original file's EOL (CRLF or LF) is preserved, and the
+  `lines_changed` metric normalizes EOL so it never counts as a change.
 - **Minified / generated files** (`*.min.js`): excluded from the walk entirely.
-- **Non-JS files, binary files:** ignored; only `.js` is processed.
+- **Non-JS files, binary files:** ignored; only `.js` is processed (but copied
+  unchanged to `--out-dir`).
+- **Unparsable files** (e.g. legacy SpiderMonkey `yield` in non-generator
+  functions): counted in `files_skipped` with the parser error as the reason.
 - **Empty target / no JS found:** valid run; report shows `files_scanned: 0` and
   all-zero metrics, with `status` still written honestly.
 

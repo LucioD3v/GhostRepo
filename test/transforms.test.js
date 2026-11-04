@@ -2,8 +2,8 @@
 // cloning any external repo. Run with:  node --test
 //
 // Covers docs/RESURRECT-CLI.md §10:
-//   * var -> const/let, == -> ===, innerHTML -> textContent all fire;
-//   * nullish idiom and static markup literal are skipped;
+//   * var -> const/let, == -> ===, innerHTML -> textContent all fire where safe;
+//   * nullish idiom, unknown operand types, markup and dynamic innerHTML skip;
 //   * transformed source still PARSES;
 //   * reported-only categories (es5_prototype, vendor_api) are counted in
 //     `before`, unchanged in `after`, and report 0 removed.
@@ -35,27 +35,29 @@ test('scan counts all five categories in the fixture (before)', () => {
   assert.ok(c.es5_prototype >= 1, `es5_prototype count ${c.es5_prototype}`);
 });
 
-test('exorcise converts unsafe innerHTML and skips static markup literal', () => {
+test('exorcise converts plain-text innerHTML only', () => {
   const { code, stats } = exorcise(source);
-  // tag-free literal '0' and dynamic String(total) are converted.
-  assert.ok(stats.applied >= 2, `applied ${stats.applied}`);
-  assert.ok(code.includes('textContent'), 'output should contain textContent');
-  // The static markup literal assignment must remain innerHTML.
+  assert.equal(stats.applied, 1, 'only the plain-text literal is converted');
+  assert.ok(code.includes("textContent = '0'"), "'0' -> textContent");
+  assert.ok(code.includes('innerHTML = String(total)'), 'dynamic value kept as innerHTML');
   assert.ok(code.includes("innerHTML = '<b>!</b>'"), 'markup literal kept as innerHTML');
   const skippedReasons = stats.skipped.map((s) => s.reason);
-  assert.ok(skippedReasons.includes('static-markup-literal'), 'records static-markup-literal skip');
+  assert.ok(skippedReasons.includes('markup-or-entity-literal'));
+  assert.ok(skippedReasons.includes('dynamic-value-needs-review'));
 });
 
-test('transmute converts var and loose equality, skips the nullish idiom', () => {
+test('transmute converts var and provably-safe equality, skips the rest', () => {
   const { code, stats } = transmute(source);
   assert.ok(code.includes('const label'), 'label -> const (never reassigned)');
   assert.ok(code.includes('let total'), 'total -> let (reassigned)');
-  assert.ok(code.includes('total === 0'), '== converted to ===');
+  assert.ok(code.includes("typeof el.pop === 'function'"), 'typeof == string -> ===');
+  assert.ok(code.includes('total == 0'), 'unknown operand types preserved');
   // The nullish-idiom comparison must be preserved.
   assert.ok(code.includes('count != undefined'), 'nullish idiom preserved');
   assert.ok(!code.includes('count !== undefined'), 'nullish idiom NOT strictened');
   const skippedReasons = stats.skipped.map((s) => s.reason);
   assert.ok(skippedReasons.includes('nullish-idiom'), 'records nullish-idiom skip');
+  assert.ok(skippedReasons.includes('operand-types-unknown'), 'records operand-types-unknown skip');
 });
 
 test('full transform pipeline output still PARSES', () => {
