@@ -25,10 +25,20 @@ CLI.
 The CLI is invoked from the repo root:
 
 ```bash
+# POSIX shells (the shebang makes the file directly executable):
 ./resurrect <repo-url> [--path <subfolder>]
-# example:
 ./resurrect https://github.com/mozilla-b2g/gaia --path apps/calculator
+
+# Windows / PowerShell (this repo's dev environment) — the extension-less
+# shebang file is not directly runnable, so invoke via Node or the bin entry:
+node resurrect https://github.com/mozilla-b2g/gaia --path apps/calculator
+npx resurrect  https://github.com/mozilla-b2g/gaia --path apps/calculator
 ```
+
+> **Cross-platform note:** `./resurrect` relies on the `#!/usr/bin/env node`
+> shebang and works on macOS/Linux. On Windows use `node resurrect …`, or the
+> `package.json` `bin` mapping via `npx resurrect …` after `npm install`. The
+> argument grammar is identical on every platform.
 
 It runs all four pipeline phases in sequence against a shallow clone of the
 target, applies conservative AST codemods, and emits `resurrection-report.json`.
@@ -101,17 +111,31 @@ match the README's user-facing vocabulary (Necromancy / Exorcism / Transmutation
 2. Walk the clone for `.js` files (skipping `node_modules/`, `.git/`, and
    minified `*.min.js`).
 3. Count five technical-debt patterns and record them as the **"before"**
-   baseline:
-   - `var` declarations
-   - loose equality / inequality (`==`, `!=`)
-   - unsafe `innerHTML =` assignments
-   - dead vendor-prefixed APIs (e.g. `MozTransform`, `webkitTransform`,
-     `mozRequestAnimationFrame`)
-   - ES5 prototype-assignment patterns (`X.prototype.y = function`)
+   baseline. Each row below gives the counting unit (one count per matched AST
+   node) and the exact `files[].before` / `files[].after` key it maps to in the
+   report schema (§7):
+
+   | Scan category | Counting unit (one per node) | `files[]` key |
+   |---------------|------------------------------|---------------|
+   | `var` declarations | each `VariableDeclaration` with `kind === 'var'` | `var` |
+   | loose equality | each `BinaryExpression` whose operator is `==` or `!=` (one per node; `===`/`!==` do not count) | `loose_equality` |
+   | unsafe `innerHTML =` | each `AssignmentExpression` (operator `=`) whose LHS member property is `innerHTML` | `innerHTML` |
+   | dead vendor-prefixed APIs | each member access to a vendor-prefixed identifier (`MozTransform`, `webkitTransform`, `mozRequestAnimationFrame`, …) | `vendor_api` |
+   | ES5 prototype assignment | each `AssignmentExpression` whose LHS matches `X.prototype.y` | `es5_prototype` |
 
 The counts are gathered by parsing each file into an AST and counting matching
 nodes, which is more accurate than text search. Files that fail to parse are
 recorded as `skipped` with the parser error — they are **not** silently dropped.
+
+> **Note — AST counting is intentionally not identical to `post-analysis.sh`.**
+> The existing hook counts with `grep -E` regex (its `innerHTML` pattern counts
+> reads, writes, strings, and comments; its `[^=!<>]==[^=]|!=[^=]` pattern is
+> line/text based). The CLI counts distinct AST nodes (e.g. `innerHTML` only on
+> the LHS of an assignment). The two methods will legitimately produce different
+> numbers for the same file. The CLI is the **canonical counter for its own
+> report**; the hook is legacy tooling for the manual `legacy/ → src/`
+> resurrection and is unrelated to — and not expected to match — the CLI's
+> numbers.
 
 ### Phase 2 — Exorcism (banish security smells & dead APIs)
 
@@ -121,9 +145,23 @@ recorded as `skipped` with the parser error — they are **not** silently droppe
   `element.innerHTML = expr` to `element.textContent = expr`. This neutralizes
   the XSS vector of assigning dynamic strings as HTML. The transform only fires
   on *assignments* (`MemberExpression.property.name === 'innerHTML'` on the
-  left-hand side of an `AssignmentExpression`), never on reads, and is skipped
-  when the right-hand side is a literal that is clearly intended as markup
-  (see Edge cases).
+  left-hand side of an `=` `AssignmentExpression`), never on reads and never on
+  compound assignment (`+=`). The skip rule is **syntactic and decidable** — no
+  "intent" guessing:
+
+  > For `element.innerHTML = <rhs>`:
+  > - If `<rhs>` is a string literal, OR a template literal with **no**
+  >   expressions, whose string value contains an HTML tag (matches the regex
+  >   `/<[a-zA-Z!/]/`), then **SKIP** and record reason `static-markup-literal`
+  >   — converting markup to `textContent` would change what the browser
+  >   renders.
+  > - Otherwise (a dynamic expression, OR a tag-free literal such as `'0'`),
+  >   **CONVERT** to `textContent`.
+
+  Applied to the showcase `calculator.js`, this converts both
+  `this.display.innerHTML = '0'` (tag-free literal — safe, desirable) and
+  `this.display.innerHTML = outval` (dynamic), and would skip only a literal
+  that actually contains tags such as `innerHTML = '<b>x</b>'`.
 - **Dead vendor-prefixed APIs:** these are *reported* and counted in Phase 1 /
   Phase 4. v1 does not auto-rewrite them to their standard equivalents, because a
   safe rewrite requires per-API knowledge and risks changing behavior; instead
@@ -140,13 +178,24 @@ recorded as `skipped` with the parser error — they are **not** silently droppe
   its scope. No reassignment → `const`; otherwise `let`. Declarations that are
   unsafe to convert (see Edge cases) are skipped and recorded.
 - **`==` → `===` and `!=` → `!==`:** rewrite loose equality
-  `BinaryExpression`s to their strict form. This is a conservative,
-  behavior-affecting change only when operands differ in type; it is applied
-  because strict equality is the project's stated modernization goal, and the
-  Zero-Breaking-Logic test fixture validates it does not change results for the
-  sample code. The transform is skipped for comparisons against `null`
-  (`x == null`), because `== null` is an intentional idiom that also matches
-  `undefined`; converting it to `===` would change behavior.
+  `BinaryExpression`s (operator `==` or `!=`) to their strict form. This is a
+  conservative, behavior-affecting change only when operands differ in type; it
+  is applied because strict equality is the project's stated modernization goal,
+  and the Zero-Breaking-Logic test fixture validates it does not change results
+  for the sample code. The **nullish-idiom skip** is broader than just `null`,
+  because the "matches null OR undefined" idiom is written against both
+  sentinels and the showcase file uses the `undefined` form:
+
+  > Skip the strict-equality conversion for any `==` / `!=`
+  > `BinaryExpression` in which **either** operand is: the `null` literal
+  > (`NullLiteral`), the identifier `undefined` (`Identifier` named
+  > `undefined`), or the `void 0` expression. Record reason `nullish-idiom`.
+
+  This preserves behavior for the real showcase line
+  `if (currentNumber != undefined)` — where `currentNumber` comes from
+  `stack.pop()` and can legitimately be `undefined` **or** `null`, so
+  converting to `!== undefined` would change the result. Every non-nullish
+  comparison is still converted.
 
 ### Phase 4 — Resurrection (report with REAL metrics)
 
@@ -158,9 +207,15 @@ After transforms are written back to the working clone, the CLI measures:
   diff computed in-process) between the original and transformed trees →
   `insertions + deletions`.
 - **Patterns removed per category:** `before - after` AST counts per category,
-  clamped at `0` so it is never negative.
-- **Per-file summary:** for each file, the counts before/after, which transforms
-  applied, and any skips with reasons.
+  clamped at `0` so it is never negative. Here `after` is a **real re-count of
+  the transformed source** using the exact same `countPatterns` function as the
+  `before` pass (§5) — it is *not* a derived "assume everything was removed"
+  value. Consequently, a pattern that was **skipped** is still physically
+  present in the transformed source and therefore **still counted in `after`**
+  (e.g. a skipped `var` leaves `after.var >= 1`). Because `removed = before -
+  after`, skips naturally reduce the removed count instead of being hidden.
+- **Per-file summary:** for each file, the symmetric before/after counts, which
+  transforms applied, and any skips with reasons.
 
 If a measurement cannot be taken (e.g. git unavailable, a file failed to parse),
 the corresponding value is `0` or `null` and the reason is recorded. See §7 for
@@ -213,7 +268,7 @@ GhostRepo/
 ├── test/
 │   └── transforms.test.js    # node:test unit tests over the fixture (self-test)
 ├── fixtures/
-│   └── legacy-sample.js      # tiny ES5 sample: var, ==, innerHTML to prove transforms
+│   └── legacy-sample.js      # tiny ES5 sample: var, ==, innerHTML (transformed) + .prototype. and MozTransform (reported-only) to cover all 5 scan categories
 └── docs/
     └── RESURRECT-CLI.md       # this document
 ```
@@ -261,38 +316,57 @@ forms before being handed to `git sparse-checkout`.
 ## 7. `resurrection-report.json` — schema & honesty rules
 
 The report is the contract with the user and the demo. It contains **only
-measured values**. The shape is consistent with the existing `post-analysis.sh`
-output so the two agree in vocabulary.
+measured values**. Its *vocabulary* (phase/category names) deliberately echoes
+the existing `post-analysis.sh` output, but its *numbers* are produced by AST
+counting, not the hook's regex, and are the canonical figures for this report.
+See the counting note in §3 — the CLI report and the hook's output are not
+expected to be numerically identical.
 
 ```jsonc
 {
   "project": "GhostRepo",
-  "repository": "gaia" | null,          // basename of the clone URL; null if unknown
+  "repository": "gaia" | null,          // last path segment, .git stripped; null if underivable
   "scope": "javascript-web-legacy",      // fixed; states the honest scope
-  "status": "RESURRECTED",
+  "status": "RESURRECTED",               // see status rule below: RESURRECTED | NO_CHANGES | SCANNED_ONLY
   "timestamp": "2025-...Z",              // ISO-8601 UTC
   "target": { "url": "...", "path": "apps/calculator" | null },
   "metrics": {
+    // ILLUSTRATIVE v1-codemod numbers only — NOT the README showcase
+    // (777/63/20), which came from a broader manual resurrection (see §10).
+    // This example has exactly ONE transformed file (the files[] entry below),
+    // so metrics.breakdown is the per-category before-after of that single file
+    // and legacy_patterns_removed is their sum. Every breakdown value equals the
+    // matching removed count in files[0] — no part exceeds the whole.
     "files_scanned": 12,                 // real count
-    "files_transformed": 7,              // files where >=1 transform applied
+    "files_transformed": 1,              // files where >=1 transform applied
     "files_skipped": 1,                  // files that failed to parse
-    "lines_changed": 341,                // real diff insertions+deletions, else 0
-    "legacy_patterns_removed": 63,       // sum of breakdown, clamped >= 0
+    "lines_changed": 43,                 // real diff insertions+deletions, else 0
+    "legacy_patterns_removed": 43,       // sum of breakdown, clamped >= 0
     "breakdown": {
-      "var_to_const_let": 40,
-      "loose_equality": 18,
-      "insecure_innerHTML": 5,
-      "dead_vendor_api": 0,              // reported-only in v1 -> honest 0
-      "es5_prototype": 0                 // reported-only in v1 -> honest 0
+      "var_to_const_let": 29,            // = files[0]: before.var 30 - after.var 1
+      "loose_equality": 11,              // = before 12 - after 1 (one nullish idiom skipped)
+      "insecure_innerHTML": 3,           // = before 3 - after 0
+      "dead_vendor_api": 0,              // reported-only in v1 -> honest 0 (after == before)
+      "es5_prototype": 0                 // reported-only in v1 -> honest 0 (after == before)
     }
   },
   "files": [
     {
+      // files[].path is relative to the SCANNED ROOT: the --path subfolder when
+      // --path is given, otherwise the clone root. With --path apps/calculator,
+      // this file (clone-root apps/calculator/js/calculator.js) is reported as:
       "path": "js/calculator.js",
+      // after = real re-count of transformed source. One var was skipped, so
+      // after.var is 1 (not 0); one loose_equality was a nullish idiom, so
+      // after.loose_equality is 1. removed = before - after accounts for both.
+      // vendor_api and es5_prototype are reported-only in v1, so after == before.
       "before": { "var": 30, "loose_equality": 12, "innerHTML": 3, "vendor_api": 1, "es5_prototype": 2 },
-      "after":  { "var": 0,  "loose_equality": 0,  "innerHTML": 0, "vendor_api": 1, "es5_prototype": 2 },
+      "after":  { "var": 1,  "loose_equality": 1,  "innerHTML": 0, "vendor_api": 1, "es5_prototype": 2 },
       "transforms_applied": ["var_to_const_let", "loose_equality", "insecure_innerHTML"],
-      "skipped": [{ "transform": "var_to_const_let", "reason": "var in for-loop init with closure capture" }]
+      "skipped": [
+        { "transform": "var_to_const_let", "reason": "var in for-loop init with closure capture" },
+        { "transform": "loose_equality", "reason": "nullish-idiom" }
+      ]
     }
   ],
   "agent_signature": "Kiro Multi-Agent Orchestrator"
@@ -311,6 +385,26 @@ output so the two agree in vocabulary.
    `es5_prototype`) show `0` removed unless a transform genuinely removed them.
 5. Skips are recorded with reasons, so a low "removed" count is explainable
    rather than hidden.
+6. **`repository` derivation (all target shapes):** take the last path segment
+   of the target and strip any trailing `.git` suffix. This is defined
+   uniformly for `https://`/`http://`, `ssh://`, `git@host:owner/repo.git`, and
+   local filesystem paths (POSIX or Windows), e.g.
+   `git@github.com:mozilla-b2g/gaia.git` → `gaia`,
+   `C:\work\gaia-calculator` → `gaia-calculator`. If no segment can be derived,
+   `repository` is `null` — never a guessed name.
+7. **`files[].path` is relative to the scanned root** — the `--path` subfolder
+   when `--path` is given, otherwise the clone root. In the example above, a
+   `--path apps/calculator` run reports the clone-root file
+   `apps/calculator/js/calculator.js` as `js/calculator.js`; without `--path`
+   the same file would be reported as `apps/calculator/js/calculator.js`. Paths
+   are always POSIX-style (`/` separators) and never absolute, so reports diff
+   cleanly across machines.
+8. **`status` reflects what actually happened:** `"RESURRECTED"` only when
+   `files_transformed >= 1` (code was actually changed); `"NO_CHANGES"` when
+   files were scanned but no transform applied (`files_scanned >= 1` and
+   `files_transformed == 0`); `"SCANNED_ONLY"` when nothing to scan
+   (`files_scanned == 0`). Claiming a resurrection on a zero-change run would be
+   dishonest.
 
 ---
 
@@ -320,7 +414,8 @@ output so the two agree in vocabulary.
 |-----------|-------------------|--------------|----------------------|--------|
 | Arg parse | Missing/invalid `<repo-url>` or bad `--path` | Fatal (before any work) | Usage message on stderr, exit `2` | stderr |
 | `git clone` | Network error, auth, bad URL, git not installed | Fatal | Error on stderr, exit `1`, no report written | stderr (full git stderr) |
-| Sparse checkout (`--path`) | Path not present in repo | Recoverable → fall back to full shallow clone, warn; or Fatal if empty | Warning on stderr; continues | stderr warning |
+| Sparse checkout — `--path` yields no files | Path not present in repo | **Fatal** — do NOT full-clone (gaia is gigabytes) | `path not found in repo` on stderr, exit `2`, no report | stderr |
+| Sparse checkout — unsupported by git version | git too old for `sparse-checkout` | Recoverable → fall back to full shallow clone, warn | Warning on stderr; continues with full clone | stderr warning |
 | File walk | Permission error on a file | Recoverable | File marked skipped with reason; walk continues | per-file entry in report |
 | AST parse of a file | Syntax the parser rejects | Recoverable | File counted as `files_skipped`, no transform attempted, reason recorded | report `files[].skipped` |
 | Individual codemod on a node | Node fails the safety check | Recoverable | Node left unchanged, skip recorded with reason | report `files[].skipped` |
@@ -346,12 +441,19 @@ an aborted run is always safe to rerun.
   naive `const`/`let` conversion would throw `SyntaxError` on redeclaration.
 - **`var` used before its declaration line** (relying on hoisting): skip, since
   `const`/`let` are in the temporal dead zone.
-- **`x == null` / `x != null`:** intentional idiom (matches both `null` and
-  `undefined`); skip the strict-equality conversion to preserve behavior.
-- **`innerHTML = '<b>literal markup</b>'`:** when the right-hand side is a string
-  literal containing HTML tags, rewriting to `textContent` would change rendered
-  output. v1 skips these (static author-controlled markup is not the XSS vector)
-  and records the skip; it rewrites only dynamic/variable assignments.
+- **Nullish idiom (`x == null`, `x != undefined`, `x == void 0`, …):** matches
+  both `null` and `undefined`; skip the strict-equality conversion to preserve
+  behavior whenever either operand is `null`, the `undefined` identifier, or
+  `void 0` (reason `nullish-idiom`). This is the rule that protects the
+  showcase's `currentNumber != undefined`.
+- **`innerHTML = '<b>literal markup</b>'`:** when the right-hand side is a
+  static literal (string, or template with no expressions) whose value matches
+  `/<[a-zA-Z!/]/` (contains an HTML tag), rewriting to `textContent` would
+  change rendered output. v1 skips these with reason `static-markup-literal`.
+- **`innerHTML = '0'` (tag-free literal):** NOT skipped — a literal with no HTML
+  tag is converted to `textContent` like any dynamic RHS. The skip boundary is
+  the tag regex above, nothing else, so the real showcase assignment is
+  modernized rather than understated.
 - **`innerHTML +=`** (append): skip; `textContent +=` is not an equivalent
   operation. Recorded.
 - **Reads of `innerHTML`** (`let h = el.innerHTML`): never touched; only
@@ -367,11 +469,28 @@ an aborted run is always safe to rerun.
 
 - **Unit tested (no clone needed):** the pure codemod functions in `exorcise.js`
   and `transmute.js`, and `scan.js`'s `countPatterns`. `test/transforms.test.js`
-  (Node's built-in `node:test`) feeds the `fixtures/legacy-sample.js` ES5 code —
-  which contains `var`, `==`, and `el.innerHTML = x` — and asserts the output
-  contains `const`/`let`, `===`, and `textContent`, that the chosen edge-case
-  idioms are skipped, and that the transformed source still **parses**
-  (`node --check` / re-parse) and remains behavior-preserving on the sample.
+  (Node's built-in `node:test`) feeds the `fixtures/legacy-sample.js` ES5 code
+  and asserts the output contains `const`/`let`, `===`, and `textContent`, that
+  the chosen edge-case idioms are skipped, and that the transformed source still
+  **parses** (`node --check` / re-parse) and remains behavior-preserving on the
+  sample.
+- **Fixture must exercise all five scan categories.** The two
+  **reported-only** categories (`es5_prototype`, `vendor_api`) never occur in
+  the showcase `calculator.js` (an object literal with no `X.prototype.y =`
+  assignments), so without a dedicated fixture they would have zero test
+  coverage and could silently miscount. `fixtures/legacy-sample.js` therefore
+  deliberately contains, in addition to the three transformed patterns (`var`,
+  `==`, `el.innerHTML = x`):
+  - at least one ES5 prototype assignment, e.g.
+    `Thing.prototype.greet = function () { ... }`, and
+  - at least one vendor-prefixed access, e.g. `el.style.MozTransform = '...'`.
+
+  The self-test then asserts a **counted-but-not-transformed** invariant for
+  both: Phase 1 counts `es5_prototype >= 1` and `vendor_api >= 1` in `before`,
+  and because v1 applies no transform to them, the re-counted `after` values are
+  unchanged and their `*_removed` breakdown stays `0`. This guards both the
+  scan counter and the honesty rule that reported-only categories never claim
+  removals.
 - **Unit tested:** the report assembler in `report.js`, by passing synthetic
   before/after stats and asserting the schema, the clamp-at-zero rule, and the
   `0`/`null` fallbacks.
@@ -379,7 +498,15 @@ an aborted run is always safe to rerun.
   "repo" (a local path target), verifying a real `resurrection-report.json` is
   produced end-to-end with only measured values — no network required.
 - **Manual / demo:** a real run against `mozilla-b2g/gaia --path apps/calculator`
-  reproduces the showcase metrics.
+  produces a `resurrection-report.json` whose numbers reflect **only the three
+  v1 codemods** (`var`, loose equality, `innerHTML`). These numbers will be
+  **lower than the README's showcase** (777 lines / 63 patterns / 20-20 tests).
+  That showcase came from a broader *manual* resurrection — ES6 modules, `class`
+  conversion, `async/await` — measured by the regex `post-analysis.sh` hook over
+  a hand-built `legacy/ → src/` tree. The CLI report and the README showcase are
+  produced by **different processes and are not expected to match**; the gap is
+  honest, not a defect. (The §7 sample's `lines_changed: 43` is likewise a
+  v1-codemod figure, not the showcase 777.)
 
 The pure-function boundary (codemods and counting take strings, do no I/O) is
 the deliberate choice that makes the transforms verifiable on a tiny fixture
@@ -396,3 +523,87 @@ produced from a real fixture run (§7, §10); this doc explains the 4-phase flow
 (§3), the supported scope (§2), and what the CLI does vs. does not do (§2). The
 gitignored `targets/` and `ghostrepo-gaia-calculator/` folders are never touched
 (§2), and `.gitignore` / `.kiro/` tracking are left unchanged (§5).
+
+---
+
+## 12. Responses to design review (round 1)
+
+Review verdict: CHANGES_REQUESTED (2 HIGH, 4 MEDIUM, 4 NIT). All ten findings
+were **addressed** — none backlogged or ignored — because each aligned with the
+original requirements (never-corrupt-code guarantee, real-metrics honesty,
+implementable rules). Both HIGH findings were verified against the actual
+showcase source (`targets/gaia-calculator/apps/calculator/js/calculator.js`
+contains `currentNumber != undefined`, `innerHTML = '0'`, and `innerHTML =
+outval`).
+
+1. **HIGH — `== null` skip missed `!= undefined`.** Fixed in §3 Phase 3 and §9:
+   the nullish-idiom skip now fires when either operand is `null`, the
+   `undefined` identifier, or `void 0`, protecting the showcase line.
+2. **HIGH — ambiguous `innerHTML` literal-skip.** Fixed in §3 Phase 2 and §9:
+   replaced "clearly intended as markup" with a syntactic rule — skip only
+   static literals matching `/<[a-zA-Z!/]/` (reason `static-markup-literal`);
+   convert all dynamic RHS and all tag-free literals including `'0'`.
+3. **MEDIUM — "reproduces the showcase metrics" claim.** Fixed in §10: the CLI
+   report reflects only the three v1 codemods, is expected to be lower than the
+   README's manual-resurrection showcase, and the two are measured by different
+   processes and are not expected to match.
+4. **MEDIUM — AST vs regex count divergence.** Fixed with a note in §3 and the
+   §7 intro: the CLI is the canonical counter for its own report; its AST counts
+   intentionally differ from the legacy regex hook, which is unrelated to the
+   CLI numbers.
+5. **MEDIUM — inconsistent `after` counts.** Fixed in §4 Phase 4 and the §7
+   sample: `after` is a real re-count of transformed source via the same
+   `countPatterns`, so skipped patterns remain counted; the sample now shows
+   `after.var: 1` / `after.loose_equality: 1` to match the recorded skips.
+6. **MEDIUM — `loose_equality` unit + scan→schema mapping.** Fixed in §3 Phase
+   1: added a table defining each category's counting unit (one per AST node;
+   `loose_equality` = one per `==`/`!=` `BinaryExpression`) and mapping each of
+   the five scan categories to its `files[]` key.
+7. **NIT — Windows entry-point invocation.** Fixed in §1: documented
+   `node resurrect …` / `npx resurrect …` for Windows alongside the POSIX
+   `./resurrect` form.
+8. **NIT — sparse-checkout fallback.** Fixed in §8: if `--path` yields no files,
+   exit `2` with `path not found in repo` (no multi-GB full-clone fallback);
+   full-clone fallback happens only when sparse-checkout itself is unsupported.
+9. **NIT — `repository` derivation.** Fixed in §7 honesty rule 6: last path
+   segment with `.git` stripped, defined for https/http/ssh/`git@`/local paths;
+   `null` if underivable.
+10. **NIT — `status` always `RESURRECTED`.** Fixed in §7 honesty rule 7:
+    `RESURRECTED` only when code changed; `NO_CHANGES` / `SCANNED_ONLY` for
+    zero-change and empty runs.
+
+---
+
+## 13. Responses to design review (round 2)
+
+Review verdict: CHANGES_REQUESTED (0 HIGH, 1 MEDIUM, 2 NIT) after all ten
+round-1 findings were confirmed closed. All three round-2 findings were
+**addressed** — none backlogged or ignored — because each was a clarity defect
+in the schema example or a test-coverage gap that directly serves the doc's
+purpose (teaching a teammate the report shape) and the real-metrics honesty
+requirement.
+
+1. **MEDIUM — the two §7 illustrative JSON blocks contradicted each other (a
+   single file removed more patterns than the project-wide total).** Fixed in
+   §7: the example now has exactly one transformed file
+   (`files_transformed: 1`), and `metrics.breakdown` equals the per-category
+   `before - after` of that single `files[]` entry
+   (`var_to_const_let: 29`, `loose_equality: 11`, `insecure_innerHTML: 3`,
+   `dead_vendor_api: 0`, `es5_prototype: 0`), with `legacy_patterns_removed: 43`
+   as their sum and `lines_changed` lowered to `43`. Every breakdown value now
+   equals the matching per-file removed count, so no part exceeds the whole. An
+   inline comment states the single-file relationship explicitly.
+2. **NIT — `files[].path` was unanchored relative to the showcase path used
+   elsewhere.** Fixed with new §7 honesty rule 7: `files[].path` is relative to
+   the scanned root (the `--path` subfolder when given, otherwise the clone
+   root), is POSIX-style, and is never absolute. The §7 sample's
+   `js/calculator.js` is now annotated as the `--path apps/calculator`-relative
+   form of the clone-root file `apps/calculator/js/calculator.js`.
+3. **NIT — `es5_prototype` (and `vendor_api`) had no test coverage because they
+   never occur in the showcase file.** Fixed in §10 and the §5 file tree: the
+   fixture `fixtures/legacy-sample.js` now explicitly includes at least one
+   `X.prototype.y = function(){}` and one vendor-prefixed access
+   (`el.style.MozTransform = …`), and the self-test asserts both reported-only
+   categories are counted in `before`, unchanged in `after`, and report `0`
+   removed — giving the two otherwise-untested scan counters a
+   counted-but-not-transformed assertion.

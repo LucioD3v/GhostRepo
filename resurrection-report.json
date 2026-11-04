@@ -1,0 +1,60 @@
+{
+  "project": "GhostRepo",
+  "repository": "fixtures",
+  "scope": "javascript-web-legacy",
+  "status": "RESURRECTED",
+  "timestamp": "2026-11-04T04:13:30.296Z",
+  "target": {
+    "url": "./fixtures",
+    "path": null
+  },
+  "metrics": {
+    "files_scanned": 1,
+    "files_transformed": 1,
+    "files_skipped": 0,
+    "lines_changed": 76,
+    "legacy_patterns_removed": 6,
+    "breakdown": {
+      "var_to_const_let": 3,
+      "loose_equality": 1,
+      "insecure_innerHTML": 2,
+      "dead_vendor_api": 0,
+      "es5_prototype": 0
+    }
+  },
+  "files": [
+    {
+      "path": "legacy-sample.js",
+      "before": {
+        "var": 3,
+        "loose_equality": 2,
+        "innerHTML": 3,
+        "vendor_api": 1,
+        "es5_prototype": 1
+      },
+      "after": {
+        "var": 0,
+        "loose_equality": 1,
+        "innerHTML": 1,
+        "vendor_api": 1,
+        "es5_prototype": 1
+      },
+      "transforms_applied": [
+        "loose_equality",
+        "var_to_const_let",
+        "insecure_innerHTML"
+      ],
+      "skipped": [
+        {
+          "transform": "insecure_innerHTML",
+          "reason": "static-markup-literal"
+        },
+        {
+          "transform": "loose_equality",
+          "reason": "nullish-idiom"
+        }
+      ]
+    }
+  ],
+  "agent_signature": "Kiro Multi-Agent Orchestrator"
+}
