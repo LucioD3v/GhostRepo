@@ -184,6 +184,16 @@ function varSkipReason(path) {
       if (!isInside(ref.node, block)) return 'used-outside-block';
       // Uses before the declaration would hit the temporal dead zone.
       if (ref.node.start < declStart) return 'used-before-declaration';
+      // A reference inside this same declaration's initializers (`var ns = ns || {}`,
+      // `var a = b, b = 1`, a self-referential IIFE) is evaluated before the binding
+      // is initialized -> it would hit the TDZ once the `var` becomes `const`/`let`.
+      if (ref.node.start < decl.end) return 'used-in-initializer';
+      // A hoisted function that reads the binding is only a hazard when some hoisted
+      // function can run before the binding is initialized (`var r = g(); var x = 1;
+      // function g() { return x; }`). A plain capture read after init stays convertible.
+      if (isInNestedFunctionDeclaration(ref, scopePath) && hoistedFunctionUsedBefore(scopePath, d.end)) {
+        return 'hoisted-function-capture';
+      }
       // Inside a loop, `let` creates a fresh binding per iteration: closures
       // would capture different values than they did with `var`.
       if (insideLoop && ref.node.start > d.end && isInNestedFunction(ref, scopePath)) {
@@ -224,6 +234,34 @@ function isInNestedFunction(refPath, scopePath) {
     p = p.parent;
   }
   return false;
+}
+
+// True when the reference sits inside a nested FunctionDeclaration within this
+// scope (not a FunctionExpression/arrow). Hoisted function declarations are the
+// only functions that can run before a later `var` is initialized.
+function isInNestedFunctionDeclaration(refPath, scopePath) {
+  let p = refPath.parent;
+  while (p && p !== scopePath) {
+    if (p.node.type === 'FunctionDeclaration') return true;
+    p = p.parent;
+  }
+  return false;
+}
+
+// True when some function declared directly in this scope is referenced (i.e. can
+// be invoked) before `pos`. Covers transitive calls: if no hoisted function is
+// touched before the binding is initialized, none of them can read it early, so
+// the rewrite stays safe (this keeps parser.js `_tokenizeNumber` convertible).
+function hoistedFunctionUsedBefore(scopePath, pos) {
+  const ids = [];
+  j(scopePath)
+    .find(j.FunctionDeclaration)
+    .forEach((p) => {
+      if (p !== scopePath && enclosingFunction(p) === scopePath && p.node.id) ids.push(p.node.id);
+    });
+  return ids.some((id) =>
+    referencesWithin(id.name, scopePath).some((r) => r.node !== id && r.node.start < pos),
+  );
 }
 
 function isInside(node, container) {

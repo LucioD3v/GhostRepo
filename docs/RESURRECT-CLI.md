@@ -445,6 +445,8 @@ requires identical results.
 | `global-scope` | top-level `var Calculator = {}` | `var` creates a global-object property shared by every classic `<script>`; `let`/`const` do not. |
 | `used-outside-block` | `if (a) { var x = 1; } return x;` | `let`/`const` are block-scoped → `ReferenceError`. |
 | `used-before-declaration` | `y = 5; var y;` | Temporal dead zone. |
+| `used-in-initializer` | `var ns = ns || {};` ; `var a = b, b = 1;` | A reference inside the declaration's own initializers is evaluated before the binding is initialized → TDZ. |
+| `hoisted-function-capture` | `var r = g(); var x = 1; function g() { return x; }` | A hoisted function runs before the binding is initialized and reads it → TDZ. |
 | `redeclared-in-scope` | `var a; … var a;` | Redeclaration is a `SyntaxError`. |
 | `shadows-parameter` | `function f(p) { var p = p || 1; }` | Redeclaring a parameter is a `SyntaxError`. |
 | `for-loop-init` | `for (var i = 0; …)` | Per-iteration bindings change closure capture. |

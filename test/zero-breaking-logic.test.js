@@ -88,6 +88,23 @@ const hazards = {
     `var counter = 1; function f() { return typeof globalThis.counter; }`,
     [[]],
   ],
+  // --- TDZ hazards: var read before its binding is initialized (Blocker 1) ---
+  'namespace default idiom in IIFE': [
+    `function f() { var ns = ns || { v: 1 }; return ns.v; }`,
+    [[]],
+  ],
+  'forward reference within one declaration': [
+    `function f() { var a = b, b = 1; return String(a); }`,
+    [[]],
+  ],
+  'self-reference from initializer IIFE': [
+    `function f() { var App = (function () { return typeof App; })(); return App; }`,
+    [[]],
+  ],
+  'hoisted function reads var before init': [
+    `function f() { var r = g(); var x = 1; function g() { return x; } return String(r); }`,
+    [[]],
+  ],
 };
 
 for (const [name, [src, inputs]] of Object.entries(hazards)) {
