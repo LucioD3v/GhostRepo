@@ -230,10 +230,10 @@ function acquire(target, subpath, cloneDir, log) {
 
   if (subpath) {
     // Sparse checkout of just the subfolder.
-    runGit(['clone', '--depth', '1', '--filter=blob:none', '--sparse', target, cloneDir], log);
+    runGit(['clone', '--depth', '1', '--filter=blob:none', '--sparse', '--', target, cloneDir], log);
     runGit(['-C', cloneDir, 'sparse-checkout', 'set', subpath], log);
   } else {
-    runGit(['clone', '--depth', '1', target, cloneDir], log);
+    runGit(['clone', '--depth', '1', '--', target, cloneDir], log);
   }
 }
 

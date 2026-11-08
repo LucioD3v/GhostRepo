@@ -11,6 +11,7 @@
 //   ./resurrect <repo-url> [--path <subfolder>]      (POSIX)
 //   node resurrect <repo-url> [--path <subfolder>]   (Windows / any platform)
 
+import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { run } from './src/pipeline.js';
 
@@ -58,6 +59,8 @@ function fail(message, exitCode) {
 function validatePath(p) {
   if (p == null) return null;
   if (p === '') fail('--path must not be empty', 2);
+  // `--path` flows into `git sparse-checkout set`; a leading '-' would inject a flag.
+  if (p.startsWith('-')) fail('--path must not start with "-"', 2);
   if (p.startsWith('/') || p.startsWith('\\')) {
     fail('--path must be relative (no leading "/")', 2);
   }
@@ -71,10 +74,11 @@ const GIT_URL = /^(https?:\/\/|git@[^:]+:|ssh:\/\/)/i;
 
 function validateTarget(t) {
   if (!t || t.trim() === '') fail('missing <repo-url>', 2);
-  if (GIT_URL.test(t)) return t;
-  // Otherwise it must look like / be a local path; the pipeline verifies it
-  // exists. Reject obviously malformed values (whitespace-only handled above).
-  return t;
+  // A leading '-' would be parsed by git as an option (e.g. --upload-pack=...),
+  // so reject it before the pipeline ever shells out to git.
+  if (t.startsWith('-')) fail('<repo-url> must not start with "-"', 2);
+  if (GIT_URL.test(t) || fs.existsSync(t)) return t;
+  fail(`not a git URL or an existing path: ${t}`, 2);
 }
 
 function main() {
