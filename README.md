@@ -36,6 +36,31 @@ Every automated refactor **must preserve the original business logic**. A resurr
 
 ---
 
+## 🌐 Try it in your browser
+
+**Live: https://luciod3v.github.io/GhostRepo/** (served by GitHub Pages from `main`; see "Deploying" below).
+
+Paste the URL of a dead GitHub repository. GhostRepo first **assesses** it from the file listing and tells you whether it can be resurrected (a web project with JavaScript: yes; a Python project: no, and it says why). If it can, you get:
+
+- the **modified code next to the original**, with every skipped site marked and explained;
+- a **live run** of the resurrected project in an isolated frame, next to the original, so you can compare them;
+- a **download** of the resurrected project, the report and a patch;
+- a **pull request kit**: branch name, commands, commit message, title and a description generated only from the measured report.
+
+Everything runs in your browser. It uses the same engine as the CLI, so the numbers are the same (the Firefox OS calculator gives 29 patterns removed in both). It does not run the repository's own tests, and it never pushes anything.
+
+Limits: public GitHub repositories only, JavaScript/web code only, at most 2,000 files and 25 MB per run (select a subfolder for bigger repositories). The live run is offline and sandboxed, and needs an `index.html`.
+
+```bash
+npm ci
+npm run web          # builds dist/ and serves http://localhost:8080
+npm run e2e:web      # end-to-end check in a real Chrome, against GitHub (needs Chrome and network)
+```
+
+**Deploying.** `.github/workflows/pages.yml` runs the tests, builds `dist/` and publishes it on every push to `main`. One-time setup: *Settings → Pages → Source: GitHub Actions*.
+
+---
+
 ## 🔁 Resurrect your own dead code
 
 GhostRepo is **not hardcoded to one project**. Point it at any legacy web repo:

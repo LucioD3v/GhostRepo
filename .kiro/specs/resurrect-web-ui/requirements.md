@@ -32,7 +32,7 @@ Decisions deliberately left to the design phase are listed at the end of this do
 1. WHEN the page loads, THEN the UI SHALL show a repository URL input, an optional subfolder field, a primary "Analyze" button, and at least one clickable example (the Gaia calculator) that fills the input and can be analyzed without typing.
 2. WHEN the user submits, THEN the UI SHALL accept only `https://github.com/<owner>/<repo>` URLs, optionally with `/tree/<ref>/<path>`, and SHALL derive the repository, ref and subfolder from them.
 3. WHEN the input is empty, is not a GitHub repository URL, or contains a subfolder that is absolute, contains `..` segments, or starts with `-`, THEN the UI SHALL NOT start an analysis and SHALL show a message that names what is wrong and shows an accepted example.
-4. WHEN the repository does not exist, is private, or the host rate limit is exhausted, THEN the UI SHALL show a distinct message for each case and SHALL NOT show a partial result.
+4. WHEN the repository is not found, the branch or folder does not exist, or the host rate limit is exhausted, THEN the UI SHALL show a distinct message for each case and SHALL NOT show a partial result. Because GitHub answers an anonymous request for a private repository exactly like one for a missing repository, "not found" and "private" SHALL share one message that says so.
 5. WHEN the user submits while an analysis or run is active, THEN the UI SHALL cancel the active one and discard its output.
 6. THE UI SHALL NOT require login, installation or any configuration to complete Requirements 1 to 8.
 
@@ -112,7 +112,7 @@ Decisions deliberately left to the design phase are listed at the end of this do
 
 #### Acceptance Criteria
 
-1. WHEN the status is `RESURRECTED`, THEN the UI SHALL offer a download of the resurrected project as a single archive that contains every file of the scanned root, transformed or not.
+1. WHEN the status is `RESURRECTED`, THEN the UI SHALL offer a download of the resurrected project as a single archive that contains every file of the scanned root, transformed or not, except `node_modules/` and `.git/` (which the engine never reads and the run never downloads).
 2. THE UI SHALL offer a separate download of the report as `resurrection-report.json`, with the same schema as the CLI report.
 3. THE UI SHALL offer a download of the changes as a unified patch that `git apply` accepts on a checkout of the target repository at the same ref.
 4. WHEN the original files use CRLF line endings, THEN the archive and the patch SHALL preserve them.
