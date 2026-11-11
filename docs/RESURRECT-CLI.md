@@ -268,7 +268,10 @@ GhostRepo/
 ├── package.json              # pinned exact deps; "type": "module"; bin + test scripts
 ├── src/
 │   ├── pipeline.js           # orchestrates phases 1→4; owns the working-dir lifecycle
-│   ├── scan.js               # Phase 1: clone + AST pattern counting (before/after reusable)
+│   ├── engine.js             # one file through phases 1→3 (pure); shared by the CLI and the web UI
+│   ├── files.js              # which files are processed (pure); shared by the CLI and the web UI
+│   ├── walk.js               # Node-only directory walker (the only fs reader besides pipeline.js)
+│   ├── scan.js               # Phase 1: AST pattern counting (before/after reusable, pure)
 │   ├── exorcise.js           # Phase 2: innerHTML→textContent codemod; dead-API reporting
 │   ├── transmute.js          # Phase 3: var→const/let and ==→=== codemods
 │   └── report.js             # Phase 4: diff + before/after → resurrection-report.json
@@ -285,16 +288,19 @@ GhostRepo/
 - `resurrect` (entry): parses args with `parseArgs`, handles `--help`, delegates
   to `pipeline.run()`. No business logic lives here.
 - `pipeline.js`: the only module that creates/cleans the working directory and
-  shells out to git. It calls scan → exorcise → transmute → report in order and
-  threads the before/after data between them.
-- `scan.js`: exports both the file walker and a `countPatterns(source)` function
-  reused for both the before and after measurement, guaranteeing symmetric
-  counting.
+  shells out to git. It walks the files, calls `engine.processFile` on each, and
+  assembles the report with `report.js`.
+- `scan.js`: exports `countPatterns(source)`, reused for both the before and after
+  measurement, guaranteeing symmetric counting. It is pure; the directory walker
+  is in `walk.js` and the file-selection rule in `files.js`.
+- `engine.js`: `processFile(path, source)` runs one file through scan → exorcise →
+  transmute → re-scan and returns its report entry and the transformed source. It
+  is pure and is the single code path used by both the CLI and the web UI.
 - `exorcise.js` / `transmute.js`: each exports pure `(source) => { code, stats }`
   codemod functions that take source text and return transformed text plus what
   they did/skipped. They do no I/O, which makes them trivially unit-testable.
-- `report.js`: pure assembly of the report object from inputs, plus the single
-  `fs.writeFile` of `resurrection-report.json`.
+- `report.js`: pure assembly of the report object from inputs. `pipeline.js`
+  writes `resurrection-report.json`.
 
 Keeping codemods and counting as pure string→result functions (no filesystem,
 no git) is the key testability decision: the fixture test feeds them strings and

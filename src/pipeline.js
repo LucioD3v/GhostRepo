@@ -9,10 +9,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 
-import { countPatterns, walkJsFiles } from './scan.js';
-import { exorcise } from './exorcise.js';
-import { transmute } from './transmute.js';
-import { buildReport, writeReport, deriveRepository } from './report.js';
+import { walkJsFiles } from './walk.js';
+import { processFile } from './engine.js';
+import { buildReport, deriveRepository } from './report.js';
 
 const DEFAULT_REPORT = 'resurrection-report.json';
 
@@ -94,59 +93,17 @@ export function processTree({ scanRoot, targetUrl, targetPath, reportPath, log =
   let linesChanged = 0;
 
   for (const abs of jsFiles) {
-    const relRaw = path.relative(scanRoot, abs);
-    const rel = relRaw.split(path.sep).join('/'); // POSIX-style
+    const rel = path.relative(scanRoot, abs).split(path.sep).join('/'); // POSIX-style
     const original = fs.readFileSync(abs, 'utf8');
 
-    let before;
-    try {
-      before = countPatterns(original);
-    } catch (e) {
-      filesSkipped += 1;
-      files.push({
-        path: rel,
-        before: null,
-        after: null,
-        transforms_applied: [],
-        skipped: [{ transform: 'parse', reason: String(e.message || e) }],
-      });
-      continue;
+    // Phases 1-3 for this file happen in the shared, pure engine.
+    const result = processFile(rel, original);
+    if (result.parseFailed) filesSkipped += 1;
+    if (result.output !== null) {
+      fs.writeFileSync(abs, result.output, 'utf8');
+      linesChanged += result.linesChanged;
     }
-
-    // --- Phase 2: Exorcism --------------------------------------------------
-    const ex = exorcise(original);
-    // --- Phase 3: Transmutation --------------------------------------------
-    const tr = transmute(ex.code);
-    const transformedSource = tr.code;
-
-    const transformsApplied = new Set(tr.stats.transforms);
-    if (ex.stats.applied > 0) transformsApplied.add('insecure_innerHTML');
-
-    const skipped = [...ex.stats.skipped, ...tr.stats.skipped];
-
-    // Re-count the transformed source with the SAME counter (symmetric).
-    let after;
-    try {
-      after = countPatterns(transformedSource);
-    } catch {
-      // A transform should never produce unparsable code; if it somehow did,
-      // discard the transform and keep the original (never corrupt output).
-      after = before;
-    }
-
-    const changed = transformedSource !== original;
-    if (changed && countPatternsSafe(transformedSource)) {
-      fs.writeFileSync(abs, transformedSource, 'utf8');
-      linesChanged += lineDiffCount(original, transformedSource);
-    }
-
-    files.push({
-      path: rel,
-      before,
-      after: changed ? after : before,
-      transforms_applied: changed ? [...transformsApplied] : [],
-      skipped,
-    });
+    files.push(result.entry);
   }
 
   // --- Phase 4: Resurrection (report) --------------------------------------
@@ -172,6 +129,11 @@ export function processTree({ scanRoot, targetUrl, targetPath, reportPath, log =
   return { report, reportPath };
 }
 
+// Write the report object to disk as pretty JSON.
+function writeReport(report, outPath) {
+  fs.writeFileSync(outPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
+}
+
 // Refuse to overwrite: the output dir must be absent or empty.
 function assertWritableOutDir(outDir) {
   if (fs.existsSync(outDir) && fs.readdirSync(outDir).length > 0) {
@@ -179,36 +141,6 @@ function assertWritableOutDir(outDir) {
     err.exitCode = 2;
     throw err;
   }
-}
-
-function countPatternsSafe(source) {
-  try {
-    countPatterns(source);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Line-level diff count (insertions + deletions) without requiring git.
-// Uses a simple LCS-free symmetric difference of line multisets, which is a
-// conservative, deterministic measure of changed lines.
-function lineDiffCount(a, b) {
-  // Normalize line endings so CRLF vs LF never counts as a change.
-  const aLines = a.replace(/\r\n/g, '\n').split('\n');
-  const bLines = b.replace(/\r\n/g, '\n').split('\n');
-
-  const countMap = new Map();
-  for (const l of aLines) countMap.set(l, (countMap.get(l) || 0) + 1);
-  for (const l of bLines) countMap.set(l, (countMap.get(l) || 0) - 1);
-
-  let deletions = 0;
-  let insertions = 0;
-  for (const v of countMap.values()) {
-    if (v > 0) deletions += v;
-    else if (v < 0) insertions += -v;
-  }
-  return insertions + deletions;
 }
 
 // --- Target acquisition ------------------------------------------------------

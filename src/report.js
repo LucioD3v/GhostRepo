@@ -1,15 +1,13 @@
 // Phase 4 — Resurrection (report with REAL metrics)
 //
-// Pure assembly of the resurrection-report.json object from measured inputs,
-// plus the single write to disk. Honesty rules (docs/RESURRECT-CLI.md §7):
+// Pure assembly of the resurrection-report.json object from measured inputs.
+// No I/O: the CLI writes the file (src/pipeline.js). Honesty rules (docs/RESURRECT-CLI.md §7):
 //   * every number comes from a real before/after AST count or a real diff;
 //   * unmeasurable values are 0 (counts) or null (identifiers), never faked;
 //   * *_removed = before - after, clamped at 0;
 //   * reported-only categories (dead_vendor_api, es5_prototype) stay 0 unless a
 //     transform genuinely removed them;
 //   * status reflects what actually happened.
-
-import fs from 'node:fs';
 
 const ZERO = { var: 0, loose_equality: 0, innerHTML: 0, vendor_api: 0, es5_prototype: 0 };
 
@@ -128,13 +126,4 @@ export function buildReport(input) {
     files,
     agent_signature: 'GhostRepo resurrect CLI',
   };
-}
-
-/**
- * Write the report object to disk as pretty JSON.
- * @param {object} report
- * @param {string} outPath
- */
-export function writeReport(report, outPath) {
-  fs.writeFileSync(outPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
 }
