@@ -9,6 +9,10 @@
 //     transform genuinely removed them;
 //   * status reflects what actually happened.
 
+// Names the tool that generated the report. It identifies the generator only and
+// does not imply that an agent ran (docs/RESURRECT-CLI.md §7).
+const DEFAULT_SIGNATURE = 'GhostRepo resurrect CLI';
+
 const ZERO = { var: 0, loose_equality: 0, innerHTML: 0, vendor_api: 0, es5_prototype: 0 };
 
 // Map a scan-category key -> report breakdown key.
@@ -65,6 +69,7 @@ export function deriveRepository(target) {
  * @param {number} input.filesScanned
  * @param {number} input.filesSkipped   files that failed to parse
  * @param {string} [input.timestamp]
+ * @param {string} [input.agentSignature]  names the tool that generated the report
  * @returns {object}
  */
 export function buildReport(input) {
@@ -76,6 +81,7 @@ export function buildReport(input) {
     filesScanned = 0,
     filesSkipped = 0,
     timestamp = new Date().toISOString(),
+    agentSignature = DEFAULT_SIGNATURE,
   } = input;
 
   const breakdown = {
@@ -124,6 +130,6 @@ export function buildReport(input) {
       breakdown,
     },
     files,
-    agent_signature: 'GhostRepo resurrect CLI',
+    agent_signature: agentSignature,
   };
 }
