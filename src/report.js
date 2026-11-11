@@ -126,7 +126,7 @@ export function buildReport(input) {
       breakdown,
     },
     files,
-    agent_signature: 'Kiro Multi-Agent Orchestrator',
+    agent_signature: 'GhostRepo resurrect CLI',
   };
 }
 

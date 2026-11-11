@@ -370,9 +370,12 @@ expected to be numerically identical.
       ]
     }
   ],
-  "agent_signature": "Kiro Multi-Agent Orchestrator"
+  "agent_signature": "GhostRepo resurrect CLI"
 }
 ```
+
+`agent_signature` identifies the tool that generated the report. The CLI is
+deterministic and runs no agent, so the value does not imply that one did.
 
 **Honesty rules (hard requirements):**
 
