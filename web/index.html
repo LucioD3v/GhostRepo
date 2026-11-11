@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GhostRepo · Resurrect dead JavaScript repositories</title>
+    <meta name="description" content="Paste the URL of a dead GitHub repository. GhostRepo checks whether it can be resurrected, shows the changes next to the original, runs the result, and prepares a pull request." />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#repo-url">Skip to the repository form</a>
+    <header class="top">
+      <div class="wrap">
+        <p class="logo"><span aria-hidden="true">👻</span> GhostRepo</p>
+        <a class="gh" href="https://github.com/LucioD3v/GhostRepo" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title">Bring a dead JavaScript repository back to life.</h1>
+        <p class="lead">
+          Paste a GitHub URL. GhostRepo first tells you whether it can be resurrected, then modernizes it with
+          AST-based codemods that skip anything not provably safe, and shows you every change.
+        </p>
+
+        <form id="repo-form" class="form" novalidate>
+          <label for="repo-url">GitHub repository URL</label>
+          <div class="row">
+            <input id="repo-url" name="repo" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo" aria-describedby="form-message" aria-invalid="false" />
+            <button id="analyze-btn" class="primary" type="submit">Analyze</button>
+          </div>
+          <details class="more">
+            <summary>Only a folder? (optional)</summary>
+            <label for="repo-folder">Subfolder</label>
+            <input id="repo-folder" name="folder" type="text" autocomplete="off" spellcheck="false" placeholder="apps/calculator" />
+          </details>
+          <p id="form-message" class="form-error" role="alert" hidden></p>
+        </form>
+
+        <div class="examples">
+          <span class="muted">Try an example:</span>
+          <span id="examples" class="chips"></span>
+        </div>
+      </section>
+
+      <div id="out" class="out"></div>
+      <p id="live" class="sr-only" aria-live="polite"></p>
+      <noscript><p class="card">GhostRepo runs in your browser and needs JavaScript enabled.</p></noscript>
+    </main>
+
+    <footer class="foot wrap">
+      <p>
+        <strong>Scope:</strong> JavaScript and web code only. Repositories in other languages are told so before any work is done.
+        Public GitHub repositories only. Everything runs in your browser; no code is sent to any server of ours.
+      </p>
+      <p class="muted">GhostRepo does not run a repository's own tests. Review the diff before you merge anything.</p>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
