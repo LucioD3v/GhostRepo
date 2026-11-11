@@ -523,7 +523,9 @@ statically known and equal (`nullish-idiom`, `operand-types-unknown`).
   `0`/`null` fallbacks.
 - **Integration tested:** `pipeline.js` against the local fixture used as a fake
   "repo" (a local path target), verifying a real `resurrection-report.json` is
-  produced end-to-end with only measured values — no network required.
+  produced end-to-end with only measured values — no network required. See
+  `test/pipeline.test.js` (`processTree` and `run`, including the `NO_CHANGES`
+  and `SCANNED_ONLY` statuses).
 - **Manual / demo:** a real run against `mozilla-b2g/gaia --path apps/calculator`
   produces a `resurrection-report.json` whose numbers reflect **only the three
   v1 codemods** (`var`, loose equality, `innerHTML`). These numbers will be
