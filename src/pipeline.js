@@ -10,7 +10,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 
 import { walkJsFiles } from './walk.js';
-import { processFile } from './engine.js';
+import { processBytes } from './engine.js';
 import { buildReport, deriveRepository } from './report.js';
 
 const DEFAULT_REPORT = 'resurrection-report.json';
@@ -94,10 +94,9 @@ export function processTree({ scanRoot, targetUrl, targetPath, reportPath, log =
 
   for (const abs of jsFiles) {
     const rel = path.relative(scanRoot, abs).split(path.sep).join('/'); // POSIX-style
-    const original = fs.readFileSync(abs, 'utf8');
-
-    // Phases 1-3 for this file happen in the shared, pure engine.
-    const result = processFile(rel, original);
+    // Phases 1-3 for this file happen in the shared, pure engine. It gets the raw
+    // bytes, so a file that is not valid UTF-8 is skipped exactly as in the web UI.
+    const result = processBytes(rel, fs.readFileSync(abs));
     if (result.parseFailed) filesSkipped += 1;
     if (result.output !== null) {
       fs.writeFileSync(abs, result.output, 'utf8');

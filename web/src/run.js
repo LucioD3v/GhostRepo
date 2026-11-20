@@ -4,14 +4,13 @@
 // No DOM here. `client` and `yieldFn` are injected, so the run is testable in
 // Node against a fake file source and compared with the CLI's own output.
 
-import { processFile } from '../../src/engine.js';
+import { processBytes } from '../../src/engine.js';
 import { buildReport } from '../../src/report.js';
 import { isEligibleJsPath } from '../../src/files.js';
 import { isInSkippedDir } from './assess.js';
 
 export const WEB_SIGNATURE = 'GhostRepo web UI';
 
-const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const encoder = new TextEncoder();
 
 function throwIfAborted(signal) {
@@ -88,24 +87,9 @@ export async function runResurrection({
     throwIfAborted(signal);
     const path = eligible[i];
 
-    let original;
-    try {
-      original = decoder.decode(files.get(path));
-    } catch {
-      // Not valid UTF-8: decoding would corrupt the file on write-back. Leave it alone.
-      filesSkipped += 1;
-      entriesOut.push({
-        path,
-        before: null,
-        after: null,
-        transforms_applied: [],
-        skipped: [{ transform: 'parse', reason: 'File is not valid UTF-8; left unchanged' }],
-      });
-      continue;
-    }
-
-    sources.set(path, original);
-    const result = processFile(path, original);
+    // Same entry point as the CLI: a file that is not valid UTF-8 is left alone.
+    const result = processBytes(path, files.get(path));
+    if (result.original !== null) sources.set(path, result.original);
     if (result.parseFailed) filesSkipped += 1;
     if (result.output !== null) {
       outputs.set(path, result.output);

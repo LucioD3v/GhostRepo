@@ -256,7 +256,30 @@ test('with a subfolder the patch uses repository-root paths', async (t) => {
   assert.equal(res.status, 0, res.stderr);
   assert.ok(fs.readFileSync(path.join(dir, 'legacy', 'a.js'), 'utf8').includes('const x = 1;'));
 
-  const kit = buildKit(web, { owner: 'o', repo: 'r', ref: 'main', subfolder: 'legacy', toolUrl: 'https://example.test/' });
+  const kit = buildKit(web, { owner: 'o', repo: 'r', sha: 'b'.repeat(40), subfolder: 'legacy', toolUrl: 'https://example.test/' });
   assert.deepEqual(kit.changedPaths, ['legacy/a.js']);
   assert.equal(kit.patch, patch);
+});
+
+test('the web run and the CLI agree on a file that is not valid UTF-8', async (t) => {
+  // Latin-1 "café" inside a function whose var would otherwise become const.
+  const latin1 = Buffer.from('function f() {\n  var s = "caf\xe9";\n  return s;\n}\n', 'latin1');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'resurrect-parity-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const cliRoot = path.join(root, 'cli');
+  fs.mkdirSync(cliRoot);
+  fs.writeFileSync(path.join(cliRoot, 'old.js'), latin1);
+  const { report: cli } = processTree({ scanRoot: cliRoot, targetUrl: null, targetPath: null, reportPath: path.join(root, 'r.json') });
+
+  const web = await runResurrection({
+    client: { fetchFile: async () => new Uint8Array(latin1) },
+    target: target(),
+    entries: [{ path: 'old.js', size: latin1.length }],
+    yieldFn: async () => {},
+  });
+
+  assert.deepEqual(web.report.metrics, cli.metrics);
+  assert.deepEqual(web.report.files, cli.files);
+  assert.ok(fs.readFileSync(path.join(cliRoot, 'old.js')).equals(latin1), 'the CLI leaves the bytes alone');
+  assert.ok(Buffer.from(resurrectedFiles(web).get('old.js')).equals(latin1), 'the web run leaves the bytes alone');
 });

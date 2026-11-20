@@ -78,6 +78,39 @@ export function processFile(relPath, original) {
   };
 }
 
+const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+
+/**
+ * processFile() for raw bytes, used by both the CLI and the web UI. A file that
+ * is not valid UTF-8 is left unchanged and reported as skipped: decoding it
+ * would turn every non-UTF-8 byte into U+FFFD on write-back. A BOM is kept.
+ *
+ * @param {string} relPath
+ * @param {Uint8Array} bytes
+ * @returns {ReturnType<typeof processFile> & { original: string|null }}
+ */
+export function processBytes(relPath, bytes) {
+  let original;
+  try {
+    original = UTF8.decode(bytes);
+  } catch {
+    return {
+      entry: {
+        path: relPath,
+        before: null,
+        after: null,
+        transforms_applied: [],
+        skipped: [{ transform: 'parse', reason: 'File is not valid UTF-8; left unchanged' }],
+      },
+      output: null,
+      linesChanged: 0,
+      parseFailed: true,
+      original: null,
+    };
+  }
+  return { ...processFile(relPath, original), original };
+}
+
 function isParsable(source) {
   try {
     countPatterns(source);
