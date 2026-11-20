@@ -5,7 +5,7 @@ import { h, clear, copyText, saveFile, formatNumber, formatBytes, relativeAge } 
 import { diffLines, sideBySide } from './diff.js';
 import { summarizeSkips } from './prkit.js';
 import { buildPreviewDocument } from './preview.js';
-import { resurrectedFiles } from './run.js';
+import { resurrectedFiles } from './result.js';
 import { buildArchive, buildReportJson, buildKit, buildPatch, PATCH_FILE_NAME } from './artifacts.js';
 
 export const PHASES = [
@@ -214,10 +214,19 @@ export function skipsPanel(report) {
 export function renderSummary(report) {
   const m = report.metrics;
   const status = report.status;
-  const title = { RESURRECTED: 'Resurrected', NO_CHANGES: 'Nothing could be changed safely', SCANNED_ONLY: 'Nothing to modernize' }[status];
+  // NO_CHANGES covers two cases: patterns were found but every rewrite was
+  // skipped, or the code had no var, ==/!= or innerHTML = to begin with.
+  const found = report.files.some((f) => f.before && (f.before.var || f.before.loose_equality || f.before.innerHTML));
+  const title = {
+    RESURRECTED: 'Resurrected',
+    NO_CHANGES: found ? 'Nothing could be changed safely' : 'Nothing needed changing',
+    SCANNED_ONLY: 'Nothing to modernize',
+  }[status];
   const lead = {
     RESURRECTED: `${formatNumber(m.legacy_patterns_removed)} legacy patterns removed in ${formatNumber(m.files_transformed)} of ${formatNumber(m.files_scanned)} files.`,
-    NO_CHANGES: 'The files were scanned, but no change could be proven to keep the same behavior, so none was made.',
+    NO_CHANGES: found
+      ? 'The files were scanned, but no change could be proven to keep the same behavior, so none was made.'
+      : 'No var, == / != or innerHTML = pattern was found in the files that could be parsed, so nothing was changed.',
     SCANNED_ONLY: 'GhostRepo v1 modernizes only JavaScript/web code, and none was found.',
   }[status];
   return h(

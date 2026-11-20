@@ -78,7 +78,11 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
           // A missing ref and a missing/private repository both answer 404: tell them apart.
           const repoRes = await getJson(`${api}/repos/${owner}/${repo}`, opts);
           if (repoRes.ok) {
-            throw new GitHubError('ref-not-found', `The branch or tag "${ref}" does not exist in ${owner}/${repo}.`);
+            // A /tree/ link is split at the first "/", so "release/1.x" arrives as "release".
+            throw new GitHubError(
+              'ref-not-found',
+              `The branch or tag "${ref}" does not exist in ${owner}/${repo}. Links to branches whose name contains "/" are not supported yet.`,
+            );
           }
         }
         throw new GitHubError(

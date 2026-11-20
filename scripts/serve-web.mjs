@@ -19,7 +19,13 @@ if (!fs.existsSync(path.join(dist, 'index.html'))) {
 http
   .createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    let rel;
+    try {
+      rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    } catch {
+      res.writeHead(400).end('Bad request'); // malformed percent-encoding
+      return;
+    }
     const file = path.resolve(dist, rel);
     if (file !== dist && !file.startsWith(dist + path.sep)) {
       res.writeHead(403).end('Forbidden');
