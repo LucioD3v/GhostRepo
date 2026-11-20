@@ -433,7 +433,7 @@ export function renderRunTab(result, { onDispose }) {
     controls.hidden = false;
     mount();
   } }, '▶ Run');
-  const intro = h('p', { class: 'muted' }, 'Nothing from the repository runs until you press Run. The project then runs inside an isolated frame: it cannot reach this page, your data or the network.');
+  const intro = h('p', { class: 'muted' }, 'Nothing from the repository runs until you press Run. The project then runs inside an isolated frame that cannot read this page or your data. Its requests and navigations are blocked, but WebRTC connections are not, so a server chosen by the project can still see your IP address.');
   const controls = h('div', { class: 'preview-controls', hidden: true }, modeButtons, errorsBox, stage, warningsBox);
   return h(
     'div',
@@ -441,7 +441,7 @@ export function renderRunTab(result, { onDispose }) {
     intro,
     runBtn,
     controls,
-    h('p', { class: 'note' }, 'The preview runs the project in a plain browser, offline. Applications that depend on platform APIs (for example Firefox OS) may not run fully in either version.'),
+    h('p', { class: 'note' }, 'The preview runs the project in a plain browser, with its requests blocked. Applications that depend on platform APIs (for example Firefox OS) may not run fully in either version.'),
   );
 }
 

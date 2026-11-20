@@ -218,7 +218,7 @@ async function main() {
     const diffInfo = await evalIn(`({ del: document.querySelectorAll('table.diff td.code.del').length, add: document.querySelectorAll('table.diff td.code.add').length, addText: [...document.querySelectorAll('table.diff td.code.add')].map(e => e.textContent).join('\\n') })`);
     check('diff shows removed and added lines', diffInfo.del > 0 && diffInfo.add > 0, JSON.stringify(diffInfo).slice(0, 200));
     check('added lines use const/let and textContent, not var', /\bconst\b|\blet\b/.test(diffInfo.addText) && !/\bvar\b/.test(diffInfo.addText));
-    check('skipped sites are marked in the diff', (await evalIn(`document.querySelectorAll('table.diff .skip-mark').length`)) >= 0);
+    check('skipped sites are marked in the diff', (await evalIn(`document.querySelectorAll('table.diff .skip-mark').length`)) > 0);
     await shot('04-code', '.tabs-card');
 
     // --- 5. Run tab: the calculator really runs, both versions behave the same -------------------------
@@ -281,7 +281,14 @@ async function main() {
     console.log('        isolation probe from inside the preview:', JSON.stringify(iso));
     check('the previewed code cannot read the UI page', iso.parent === 'BLOCKED', JSON.stringify(iso));
     check('the previewed code has no storage', iso.storage === 'BLOCKED', JSON.stringify(iso));
-    check('the previewed code cannot reach the network', iso.network === 'BLOCKED', JSON.stringify(iso));
+    check('the previewed code cannot fetch from the network', iso.network === 'BLOCKED', JSON.stringify(iso));
+
+    // A navigation is a request too. The UI page's frame-src must block it.
+    await evalIn(`window.__csp = []; document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(e.effectiveDirective + ' ' + e.blockedURI)); true`);
+    await evalIn(`setTimeout(() => { location.href = 'https://example.com/?from=preview'; }, 0), true`, sessionOf(1));
+    await sleep(2000);
+    const violations = await evalIn('window.__csp');
+    check('the previewed code cannot navigate its frame to another site', violations.some((v) => v.startsWith('frame-src https://example.com')), JSON.stringify(violations));
 
     // --- 6. Download and pull request ------------------------------------------------------------------
     console.log('\n6. Download and pull request kit');
@@ -293,7 +300,8 @@ async function main() {
     const pr = await evalIn(`Object.fromEntries([...document.querySelectorAll('.copy-block')].map(b => [b.querySelector('strong').textContent, (b.querySelector('textarea, input') || {}).value]))`);
     check('kit has branch, commands, commit message, title and description', ['Branch name', 'Commands', 'Commit message', 'Pull request title', 'Pull request description'].every((k) => pr[k] && pr[k].length > 5), Object.keys(pr).join(', '));
     check('branch name is ghostrepo/resurrect-js-YYYYMMDD', /^ghostrepo\/resurrect-js-\d{8}$/.test(pr['Branch name']), pr['Branch name']);
-    check('commands apply the patch with paths for the legacy/ folder', /git apply ghostrepo-resurrect\.patch/.test(pr.Commands) && /legacy\/js\/calculator\.js/.test(pr.Commands), pr.Commands);
+    check('commands branch from the analyzed commit', /git checkout -b ghostrepo\/resurrect-js-\d{8} [0-9a-f]{40}/.test(pr.Commands), pr.Commands);
+    check('commands apply the patch from next to the clone, naming no path', /git apply --index \.\.\/ghostrepo-resurrect\.patch/.test(pr.Commands) && !/calculator\.js/.test(pr.Commands), pr.Commands);
     check('description says the repository tests were not run', /did \*\*not\*\* run this repository's tests/.test(pr['Pull request description']));
     check('description names no agent and claims no test results', !/\bagent\b|\bAI\b|Kiro|tests pass|no regression/i.test(pr['Pull request description']));
     await shot('06-pr', '.tabs-card');
@@ -315,7 +323,7 @@ async function main() {
     check('a missing repository says not found or private', /not found/i.test(await text('.error-card')) && /private/i.test(await text('.error-card')), await text('.error-card'));
     await evalIn(`(() => { document.getElementById('repo-url').value = 'https://github.com/LucioD3v/ghostrepo-gaia-calculator/tree/main/no/such/dir'; document.getElementById('repo-form').requestSubmit(); return true; })()`);
     await waitFor(`!!document.querySelector('.error-card') && /Folder not found/.test(document.querySelector('.error-card').textContent)`, 'folder card');
-    check('a missing folder is named', true);
+    check('a missing folder is named', /no\/such\/dir/.test(await text('.error-card')), await text('.error-card'));
 
     // --- 9. Shared link and small screens -------------------------------------------------------------------------
     console.log('\n9. Shared link and a 360 px screen');

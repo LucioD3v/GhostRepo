@@ -2,6 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- The preview iframe uses srcdoc, which frame-src does not restrict. This keeps
+         previewed code from navigating its frame to another site. -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GhostRepo · Resurrect dead JavaScript repositories</title>
     <meta name="description" content="Paste the URL of a dead GitHub repository. GhostRepo checks whether it can be resurrected, shows the changes next to the original, runs the result, and prepares a pull request." />

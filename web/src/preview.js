@@ -5,8 +5,11 @@
 // network and never gets a URL to reach. Safety does not depend on this code:
 // the caller must put the document in an iframe with sandbox="allow-scripts"
 // (no allow-same-origin), so the project runs in an opaque origin with no access
-// to the UI page, its storage or any credential. The CSP below also blocks the
-// network. The project is untrusted data until the user presses "Run".
+// to the UI page, its storage or any credential. The CSP below blocks fetch, XHR
+// and subresource requests; navigations of the frame are blocked by the UI
+// page's own frame-src 'none' (web/index.html). WebRTC is NOT blocked by either
+// CSP, so a project can still contact a STUN server it chooses; the Run tab says
+// so. The project is untrusted data until the user presses "Run".
 
 const MIME = {
   '.png': 'image/png',
