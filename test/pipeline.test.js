@@ -67,8 +67,8 @@ test('processTree on the fixture writes a report with only measured values', (t)
   assert.equal(report.metrics.breakdown.es5_prototype, 0, 'reported-only in v1');
 
   // (d) a real diff count, and POSIX-style relative paths
-  assert.ok(Number.isInteger(report.metrics.lines_changed));
-  assert.ok(report.metrics.lines_changed > 0);
+  // 5 rewritten lines, each counted once as a deletion and once as an insertion.
+  assert.equal(report.metrics.lines_changed, 10);
   assert.equal(file.path, 'legacy-sample.js');
   assert.ok(!path.isAbsolute(file.path) && !file.path.includes('\\'));
 
@@ -150,4 +150,18 @@ test('run refuses to write into a non-empty output directory', (t) => {
     (e) => e.exitCode === 2 && /not empty/.test(e.message),
   );
   assert.equal(fs.readFileSync(path.join(outDir, 'keep.txt'), 'utf8'), 'do not overwrite');
+});
+
+test('run exits with code 2 and writes no report when --path is not in the target', (t) => {
+  const tmp = makeTmp(t);
+  const source = path.join(tmp, 'legacy-repo');
+  fs.mkdirSync(source);
+  fs.copyFileSync(FIXTURE, path.join(source, 'legacy-sample.js'));
+  const reportPath = path.join(tmp, 'r.json');
+
+  assert.throws(
+    () => run({ target: source, subpath: 'missing', reportPath, outDir: path.join(tmp, 'out') }),
+    (e) => e.exitCode === 2 && /path not found in repo: missing/.test(e.message),
+  );
+  assert.ok(!fs.existsSync(reportPath), 'no report is written');
 });

@@ -69,8 +69,9 @@ GhostRepo is **not hardcoded to one project**. Point it at any legacy web repo:
 # Resurrect any JavaScript / web project
 ./resurrect <repo-url> [--path <subfolder>]
 
-# The showcase example (see below):
-./resurrect https://github.com/mozilla-b2g/gaia --path apps/calculator
+# The showcase example (see below): the Gaia calculator, recovered from gaia's
+# last living commit, because it is no longer on gaia's default branch
+./resurrect https://github.com/LucioD3v/ghostrepo-gaia-calculator --path legacy
 ```
 
 ### v1 scope — JavaScript / Web Legacy
