@@ -11,8 +11,6 @@ import { isInSkippedDir } from './assess.js';
 
 export const WEB_SIGNATURE = 'GhostRepo web UI';
 
-const encoder = new TextEncoder();
-
 function throwIfAborted(signal) {
   if (signal && signal.aborted) throw Object.assign(new Error('Run cancelled'), { name: 'AbortError' });
 }
@@ -22,12 +20,18 @@ const defaultYield = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** Run `fn` over `items` with at most `limit` in flight. */
 async function mapPool(items, limit, fn, signal) {
   let next = 0;
+  let failed = false; // after the first failure no worker starts another download
   const results = new Array(items.length);
   async function worker() {
-    while (next < items.length) {
+    while (next < items.length && !failed) {
       throwIfAborted(signal);
       const i = next++;
-      results[i] = await fn(items[i], i);
+      try {
+        results[i] = await fn(items[i], i);
+      } catch (e) {
+        failed = true;
+        throw e;
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
@@ -121,11 +125,4 @@ export async function runResurrection({
   return { report, files, sources, outputs };
 }
 
-/** Final bytes of every fetched file: transformed where the engine changed it. */
-export function resurrectedFiles(result) {
-  const out = new Map();
-  for (const [path, bytes] of result.files) {
-    out.set(path, result.outputs.has(path) ? encoder.encode(result.outputs.get(path)) : bytes);
-  }
-  return out;
-}
+export { resurrectedFiles } from './result.js';

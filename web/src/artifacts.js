@@ -4,7 +4,7 @@
 import { createZip } from './zip.js';
 import { unifiedPatch } from './diff.js';
 import { buildPrKit } from './prkit.js';
-import { resurrectedFiles } from './run.js';
+import { resurrectedFiles } from './result.js';
 
 export const PATCH_FILE_NAME = 'ghostrepo-resurrect.patch';
 

@@ -5,7 +5,7 @@ import { h, clear } from './dom.js';
 import { parseRepoInput } from './github-url.js';
 import { createGitHubClient, GitHubError } from './github.js';
 import { assessListing } from './assess.js';
-import { runResurrection } from './run.js';
+import { runInWorker } from './run-worker.js';
 import {
   renderAssessment,
   renderProgress,
@@ -153,8 +153,7 @@ async function resurrect({ target, assessment, listing }) {
   let phase = 'necromancy';
 
   try {
-    const result = await runResurrection({
-      client,
+    const result = await runInWorker({
       target,
       entries: listing.entries,
       signal,
@@ -169,7 +168,9 @@ async function resurrect({ target, assessment, listing }) {
     markProgressFailed(progress, phase);
     const { title, message } = describeError(e);
     const phaseName = { necromancy: 'Necromancy', exorcism: 'Exorcism', transmutation: 'Transmutation', resurrection: 'Resurrection' }[phase];
-    show(h('div', {}, errorCard(`${title} (during ${phaseName})`, message, { retry: () => resurrect({ target, assessment, listing }) })));
+    // Keep the progress card (with the failed phase marked) under the error card;
+    // the error card comes first, so it still gets the focus.
+    show(h('div', { class: 'stack' }, errorCard(`${title} (during ${phaseName})`, message, { retry: () => resurrect({ target, assessment, listing }) }), progress));
     announce(`${title} during ${phaseName}`);
   }
 }

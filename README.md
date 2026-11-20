@@ -49,7 +49,7 @@ Paste the URL of a dead GitHub repository. GhostRepo first **assesses** it from 
 
 Everything runs in your browser. It uses the same engine as the CLI, so the numbers are the same (the Firefox OS calculator gives 29 patterns removed in both). It does not run the repository's own tests, and it never pushes anything.
 
-Limits: public GitHub repositories only, JavaScript/web code only, at most 2,000 files and 25 MB per run (select a subfolder for bigger repositories). The live run is offline and sandboxed, and needs an `index.html`.
+Limits: public GitHub repositories only, JavaScript/web code only, at most 2,000 files and 25 MB per run (select a subfolder for bigger repositories). The live run needs an `index.html`. It runs in a sandboxed frame that cannot read the page or your data, and its requests and navigations are blocked, but WebRTC is not: a server chosen by the project can see your IP address. The engine runs in a background worker, so the page stays responsive and a new run cancels the old one, but a very large unminified file (an 11,000-line jQuery, for example) takes a minute or more.
 
 ```bash
 npm ci

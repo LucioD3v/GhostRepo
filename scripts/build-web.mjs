@@ -18,9 +18,14 @@ const shim = (name) => path.join(root, 'web', 'shims', name);
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
+// Two bundles: the page (app.js) and the resurrection worker (worker.js), which
+// carries the engine so a long engine call never blocks the page.
 const result = await build({
-  entryPoints: [path.join(root, 'web', 'src', 'main.js')],
-  outfile: path.join(dist, 'app.js'),
+  entryPoints: {
+    app: path.join(root, 'web', 'src', 'main.js'),
+    worker: path.join(root, 'web', 'src', 'worker.js'),
+  },
+  outdir: dist,
   bundle: true,
   format: 'iife',
   platform: 'browser',
@@ -48,5 +53,5 @@ if (nodeOnly.length > 0) {
   process.exit(1);
 }
 
-const size = fs.statSync(path.join(dist, 'app.js')).size;
-console.log(`Built dist/ — app.js ${(size / 1024).toFixed(0)} KB`);
+const kb = (f) => (fs.statSync(path.join(dist, f)).size / 1024).toFixed(0);
+console.log(`Built dist/ — app.js ${kb("app.js")} KB, worker.js ${kb("worker.js")} KB`);
