@@ -42,12 +42,12 @@ export function buildPatch(result, subfolder) {
 }
 
 /** Everything the "Prepare pull request" panel shows. */
-export function buildKit(result, { owner, repo, ref, subfolder, toolUrl }) {
+export function buildKit(result, { owner, repo, sha, subfolder, toolUrl }) {
   const kit = buildPrKit({
     report: result.report,
     owner,
     repo,
-    ref,
+    sha,
     subfolder,
     changedPaths: changedPaths(result),
     patchFileName: PATCH_FILE_NAME,

@@ -176,7 +176,7 @@ async function resurrect({ target, assessment, listing }) {
 
 function showResult({ result, target, assessment }) {
   const { report } = result;
-  const ctx = { owner: target.owner, repo: target.repo, ref: target.ref, subfolder: target.subfolder, toolUrl: TOOL_URL };
+  const ctx = { owner: target.owner, repo: target.repo, sha: target.sha, subfolder: target.subfolder, toolUrl: TOOL_URL };
   const parts = [renderSummary(report)];
 
   if (report.status === 'RESURRECTED') {

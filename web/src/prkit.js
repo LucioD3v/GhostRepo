@@ -75,14 +75,15 @@ function prefixed(prefix, p) {
  * @param {object} input.report      the resurrection report
  * @param {string} input.owner
  * @param {string} input.repo
- * @param {string|null} input.ref
+ * @param {string} input.sha       the full commit sha the patch was made against
  * @param {string} input.subfolder   '' when the repository root was analyzed
  * @param {string[]} input.changedPaths  paths relative to the scanned root
  * @param {string} input.patchFileName
  * @param {string} input.toolUrl     where GhostRepo lives
  * @param {Date} [input.date]
  */
-export function buildPrKit({ report, owner, repo, ref, subfolder, changedPaths, patchFileName, toolUrl, date = new Date() }) {
+export function buildPrKit({ report, owner, repo, sha, subfolder, changedPaths, patchFileName, toolUrl, date = new Date() }) {
+  if (!/^[0-9a-f]{40}$/.test(String(sha))) throw new Error('buildPrKit needs the full commit sha the patch was made against.');
   const m = report.metrics;
   const stamp = date.toISOString().slice(0, 10).replace(/-/g, '');
   const branch = `ghostrepo/resurrect-js-${stamp}`;
@@ -158,14 +159,19 @@ export function buildPrKit({ report, owner, repo, ref, subfolder, changedPaths, 
     `in ${plural(m.files_transformed, 'file', 'files')} with AST-based codemods that skip anything ` +
     'not provably behavior-preserving.';
 
+  // No repository-controlled text below: the ref and the file names can contain
+  // shell syntax. owner and repo are checked against [A-Za-z0-9_.-] by
+  // parseRepoInput, the pinned commit is 40 hex digits, and `git apply --index`
+  // stages the change without naming any path. The title is built from fixed
+  // strings only. `gh repo fork --remote` makes your fork `origin` (and the
+  // original `upstream`), so the push works without write access to the original.
   const commands = [
     `git clone https://github.com/${owner}/${repo}.git`,
     `cd ${repo}`,
-    ...(ref ? [`git checkout ${ref}`] : []),
-    `git checkout -b ${branch}`,
-    `git apply ${patchFileName}`,
-    `git add ${repoPaths.map((p) => `"${p}"`).join(' ')}`,
+    `git checkout -b ${branch} ${sha}`,
+    `git apply --index ../${patchFileName}`,
     `git commit -m "${prTitle.replace(/"/g, '\\"')}"`,
+    'gh repo fork --remote',
     `git push -u origin ${branch}`,
   ];
 

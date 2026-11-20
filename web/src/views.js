@@ -479,7 +479,7 @@ export function renderPrTab(result, ctx) {
     'div',
     { class: 'pr-tab' },
     h('p', {}, `This kit contains only the ${kit.changedPaths.length} changed file${kit.changedPaths.length === 1 ? '' : 's'}, as one atomic change. Nothing is sent anywhere: you decide when to push.`),
-    h('ol', { class: 'steps' }, h('li', {}, 'Download the patch and put it next to your clone.'), h('li', {}, 'Run the commands below.'), h('li', {}, 'Open the pull request from your fork or branch and paste the title and description.')),
+    h('ol', { class: 'steps' }, h('li', {}, 'Download the patch into an empty folder and open a shell there: the commands clone the repository into that folder and read the patch from it.'), h('li', {}, 'Run the commands below. They branch from the exact commit that was analyzed. "gh repo fork --remote" (GitHub CLI) creates your fork and makes it origin; without the GitHub CLI, fork on GitHub, run git remote add fork https://github.com/<you>/' + ctx.repo + '.git and push to fork instead.'), h('li', {}, 'Open the pull request from your fork and paste the title and description.')),
     h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: () => saveFile(PATCH_FILE_NAME, kit.patch, 'text/x-diff') }, `⬇ Download ${PATCH_FILE_NAME}`), h('a', { class: 'btn', href: repoUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Open the repository on GitHub')),
     copyBlock('Branch name', kit.branch, { multiline: false }),
     copyBlock('Commands', kit.commands.join('\n'), { rows: Math.min(kit.commands.length + 1, 10) }),
