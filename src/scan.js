@@ -1,12 +1,12 @@
 // Phase 1 — Necromancy (scan)
 //
-// Walks a working directory for .js files and counts five technical-debt
-// patterns by inspecting the AST (not regex). The same countPatterns() function
+// Pure: no filesystem. The directory walker lives in src/walk.js and the
+// file-selection rule in src/files.js, so this module runs in a browser too.
+//
+// Counts five technical-debt patterns by inspecting the AST (not regex). The same countPatterns() function
 // is used for both the "before" and "after" measurements so the two passes are
 // always symmetric. See docs/RESURRECT-CLI.md §3 and §7.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import jscodeshift from 'jscodeshift';
 
 // jscodeshift's default export is a babel-flavoured runner; its .js parser
@@ -122,42 +122,6 @@ function isPrototypeAssignment(left) {
     obj.property.type === 'Identifier' &&
     obj.property.name === 'prototype'
   );
-}
-
-/**
- * Recursively collect .js files under `dir`, skipping node_modules/, .git/, and
- * minified *.min.js files. Returns absolute paths.
- *
- * @param {string} dir
- * @returns {string[]}
- */
-export function walkJsFiles(dir) {
-  const results = [];
-  const SKIP_DIRS = new Set(['node_modules', '.git']);
-
-  function recurse(current) {
-    let entries;
-    try {
-      entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      // Permission / IO error on a directory — skip it, keep walking the rest.
-      return;
-    }
-    for (const entry of entries) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        recurse(full);
-      } else if (entry.isFile()) {
-        if (entry.name.endsWith('.min.js')) continue;
-        if (entry.name.endsWith('.js')) results.push(full);
-      }
-    }
-  }
-
-  recurse(dir);
-  results.sort();
-  return results;
 }
 
 export { j as parser };

@@ -8,12 +8,18 @@
     "resurrect": "resurrect"
   },
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "build:web": "node scripts/build-web.mjs",
+    "web": "node scripts/build-web.mjs && node scripts/serve-web.mjs",
+    "e2e:web": "node scripts/build-web.mjs && node scripts/e2e-web.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "jscodeshift": "17.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

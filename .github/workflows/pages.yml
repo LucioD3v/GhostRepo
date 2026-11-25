@@ -1,0 +1,54 @@
+name: CI and GitHub Pages
+
+# On every pull request: run the tests and build the web UI.
+# On every push to main: the same, then publish dist/ to GitHub Pages.
+# One-time setting: Repository Settings -> Pages -> Source: "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Only the deploy job gets write permissions (below). The build job runs
+# `npm ci`, which runs dependency install scripts, with read-only access.
+permissions:
+  contents: read
+
+concurrency:
+  # Deployments share one group and are never cancelled once started (as in
+  # GitHub's Pages starter workflow); each pull request has its own group.
+  group: ${{ github.event_name == 'pull_request' && format('ci-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The site is only published if the engine and the web modules pass.
+      - run: npm test
+      - run: npm run build:web
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
