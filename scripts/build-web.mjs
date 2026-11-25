@@ -7,6 +7,7 @@
 // name but never execute in a browser are replaced by tiny shims (web/shims).
 
 import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,8 +43,31 @@ const result = await build({
   },
 });
 
-fs.copyFileSync(path.join(root, 'web', 'index.html'), path.join(dist, 'index.html'));
 fs.copyFileSync(path.join(root, 'web', 'style.css'), path.join(dist, 'style.css'));
+
+// Cache busting: browsers and GitHub Pages cache style.css and app.js, so a new
+// page could load with the previous stylesheet. A content hash in the URL makes
+// every change a new URL.
+const hashOf = (f) => createHash('sha256').update(fs.readFileSync(path.join(dist, f))).digest('hex').slice(0, 10);
+// The worker URL lives in app.js (web/src/run-worker.js), so version it first;
+// app.js's own hash then covers the change.
+const appPath = path.join(dist, 'app.js');
+const app = fs.readFileSync(appPath, 'utf8');
+const workerRefs = app.split('"./worker.js"').length - 1;
+if (workerRefs !== 1) {
+  console.error(`expected one "./worker.js" reference in app.js, found ${workerRefs}`);
+  process.exit(1);
+}
+fs.writeFileSync(appPath, app.replace('"./worker.js"', `"./worker.js?v=${hashOf('worker.js')}"`));
+const html = fs
+  .readFileSync(path.join(root, 'web', 'index.html'), 'utf8')
+  .replace('href="./style.css"', `href="./style.css?v=${hashOf('style.css')}"`)
+  .replace('src="./app.js"', `src="./app.js?v=${hashOf('app.js')}"`);
+if (!html.includes('style.css?v=') || !html.includes('app.js?v=')) {
+  console.error('index.html no longer references ./style.css and ./app.js; update the cache busting in build-web.mjs');
+  process.exit(1);
+}
+fs.writeFileSync(path.join(dist, 'index.html'), html);
 fs.writeFileSync(path.join(dist, '.nojekyll'), '');
 
 // Fail loudly if a Node-only import slipped into the browser bundle.
