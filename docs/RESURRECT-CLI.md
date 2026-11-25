@@ -6,10 +6,11 @@
 > measured metrics only**. This document is the project vision a teammate can
 > read before touching the code.
 
-**Status:** Design (pre-implementation). Once approved, the technology stack and
-file structure described here are locked.
+**Status:** Implemented (v1). The CLI described here shipped in PR #2 and is the
+current behavior. Where this document and the code disagree, the code is the
+source of truth and the document is a bug.
 **Scope level:** Level 2 — scan + SAFE AST transforms (no PR automation yet).
-**Branch:** `feat/resurrect-cli`.
+**Branch:** merged to `main` via PR #2 (`feat/resurrect-cli`).
 
 ---
 
@@ -27,13 +28,19 @@ The CLI is invoked from the repo root:
 ```bash
 # POSIX shells (the shebang makes the file directly executable):
 ./resurrect <repo-url> [--path <subfolder>]
-./resurrect https://github.com/mozilla-b2g/gaia --path apps/calculator
+./resurrect https://github.com/LucioD3v/ghostrepo-gaia-calculator --path legacy
 
 # Windows / PowerShell (this repo's dev environment) — the extension-less
 # shebang file is not directly runnable, so invoke via Node or the bin entry:
-node resurrect https://github.com/mozilla-b2g/gaia --path apps/calculator
-npx resurrect  https://github.com/mozilla-b2g/gaia --path apps/calculator
+node resurrect https://github.com/LucioD3v/ghostrepo-gaia-calculator --path legacy
+npx resurrect  https://github.com/LucioD3v/ghostrepo-gaia-calculator --path legacy
 ```
+
+> **Why not `mozilla-b2g/gaia --path apps/calculator`?** The calculator was
+> deleted from gaia in 2012, so it is not on gaia's default branch, which is
+> what `resurrect` clones: that command exits `2` with `path not found in
+> repo`. `ghostrepo-gaia-calculator/legacy` holds the source recovered from
+> gaia commit `7378e497d0`, unchanged.
 
 > **Cross-platform note:** `./resurrect` relies on the `#!/usr/bin/env node`
 > shebang and works on macOS/Linux. On Windows use `node resurrect …`, or the
@@ -204,9 +211,12 @@ recorded as `skipped` with the parser error — they are **not** silently droppe
 
 After transforms are written back to the working clone, the CLI measures:
 
-- **Lines changed:** from a real diff (`git diff --shortstat`, or a line-level
-  diff computed in-process) between the original and transformed trees →
-  `insertions + deletions`.
+- **Lines changed:** an in-process line diff (`lineDiffCount` in
+  `src/pipeline.js`) between each original file and its transformed source,
+  summed over files → `insertions + deletions`. It compares the two versions as
+  multisets of lines with CRLF/LF normalized, so line-ending changes never
+  count. It does not call git and is not identical to `git diff --shortstat`
+  (for example, a line that only moves position counts as unchanged).
 - **Patterns removed per category:** `before - after` AST counts per category,
   clamped at `0` so it is never negative. Here `after` is a **real re-count of
   the transformed source** using the exact same `countPatterns` function as the
@@ -218,13 +228,13 @@ After transforms are written back to the working clone, the CLI measures:
 - **Per-file summary:** for each file, the symmetric before/after counts, which
   transforms applied, and any skips with reasons.
 
-If a measurement cannot be taken (e.g. git unavailable, a file failed to parse),
+If a measurement cannot be taken (e.g. a file failed to parse),
 the corresponding value is `0` or `null` and the reason is recorded. See §7 for
 the full schema and the honesty rules.
 
 ---
 
-## 4. Technology stack (locked on approval)
+## 4. Technology stack
 
 | Concern | Choice | Pinned version |
 |---------|--------|----------------|
@@ -251,23 +261,28 @@ ecosystem).
 
 ---
 
-## 5. File structure (planned)
+## 5. File structure
 
 All new files live at the GhostRepo root. The `.kiro/` directory stays tracked
-(hackathon requirement) and `.gitignore` is not changed.
+(hackathon requirement). `.gitignore` gained entries for internal and generated
+artifacts: `.agents/`, `_devpost/`, `resurrection-report.json` and
+`resurrected/`.
 
 ```
 GhostRepo/
 ├── resurrect                 # executable entry point, Node shebang (#!/usr/bin/env node)
 ├── package.json              # pinned exact deps; "type": "module"; bin + test scripts
 ├── src/
-│   ├── pipeline.js           # orchestrates phases 1→4; owns the working-dir lifecycle
-│   ├── scan.js               # Phase 1: clone + AST pattern counting (before/after reusable)
+│   ├── pipeline.js           # orchestrates phases 1→4; clone/copy (acquire), line diff (lineDiffCount), working dir
+│   ├── scan.js               # Phase 1: file walk + AST pattern counting (before/after reusable)
 │   ├── exorcise.js           # Phase 2: innerHTML→textContent codemod; dead-API reporting
 │   ├── transmute.js          # Phase 3: var→const/let and ==→=== codemods
-│   └── report.js             # Phase 4: diff + before/after → resurrection-report.json
+│   └── report.js             # Phase 4: report object from measured inputs → resurrection-report.json
 ├── test/
-│   └── transforms.test.js    # node:test unit tests over the fixture (self-test)
+│   ├── transforms.test.js           # node:test unit tests over the fixture (self-test)
+│   ├── zero-breaking-logic.test.js  # original vs transformed code, run in a VM
+│   ├── pipeline.test.js             # processTree / run integration test
+│   └── cli.test.js                  # argument validation of the resurrect entry point
 ├── fixtures/
 │   └── legacy-sample.js      # tiny ES5 sample: var, ==, innerHTML (transformed) + .prototype. and MozTransform (reported-only) to cover all 5 scan categories
 └── docs/
@@ -326,27 +341,26 @@ expected to be numerically identical.
 ```jsonc
 {
   "project": "GhostRepo",
-  "repository": "gaia" | null,          // last path segment, .git stripped; null if underivable
+  "repository": "ghostrepo-gaia-calculator", // last path segment, .git stripped; null if underivable
   "scope": "javascript-web-legacy",      // fixed; states the honest scope
   "status": "RESURRECTED",               // see status rule below: RESURRECTED | NO_CHANGES | SCANNED_ONLY
-  "timestamp": "2025-...Z",              // ISO-8601 UTC
-  "target": { "url": "...", "path": "apps/calculator" | null },
+  "timestamp": "2026-...Z",              // ISO-8601 UTC
+  "target": { "url": "https://github.com/LucioD3v/ghostrepo-gaia-calculator", "path": "legacy" },
   "metrics": {
-    // ILLUSTRATIVE v1-codemod numbers only — NOT the README showcase
-    // (777/63/20), which came from a broader manual resurrection (see §10).
-    // This example has exactly ONE transformed file (the files[] entry below),
-    // so metrics.breakdown is the per-category before-after of that single file
-    // and legacy_patterns_removed is their sum. Every breakdown value equals the
-    // matching removed count in files[0] — no part exceeds the whole.
-    "files_scanned": 12,                 // real count
-    "files_transformed": 1,              // files where >=1 transform applied
-    "files_skipped": 1,                  // files that failed to parse
-    "lines_changed": 43,                 // real diff insertions+deletions, else 0
-    "legacy_patterns_removed": 43,       // sum of breakdown, clamped >= 0
+    // REAL v1-codemod numbers from
+    //   resurrect https://github.com/LucioD3v/ghostrepo-gaia-calculator --path legacy
+    // (the Gaia calculator recovered from gaia 7378e497d0). They are NOT the
+    // README showcase (777/63/20), which came from a broader manual
+    // resurrection (see §10).
+    "files_scanned": 5,                  // real count
+    "files_transformed": 2,              // js/calculator.js and js/parser.js
+    "files_skipped": 2,                  // two test files the parser rejects
+    "lines_changed": 58,                 // in-process line diff, insertions+deletions, else 0
+    "legacy_patterns_removed": 29,       // sum of breakdown, clamped >= 0
     "breakdown": {
-      "var_to_const_let": 29,            // = files[0]: before.var 30 - after.var 1
-      "loose_equality": 11,              // = before 12 - after 1 (one nullish idiom skipped)
-      "insecure_innerHTML": 3,           // = before 3 - after 0
+      "var_to_const_let": 28,            // calculator.js 28 - 2 = 26, plus parser.js 3 - 1 = 2
+      "loose_equality": 0,               // every == / != had unknown operand types or was a nullish idiom
+      "insecure_innerHTML": 1,           // calculator.js 2 - 1 (innerHTML = outval needs review)
       "dead_vendor_api": 0,              // reported-only in v1 -> honest 0 (after == before)
       "es5_prototype": 0                 // reported-only in v1 -> honest 0 (after == before)
     }
@@ -354,25 +368,34 @@ expected to be numerically identical.
   "files": [
     {
       // files[].path is relative to the SCANNED ROOT: the --path subfolder when
-      // --path is given, otherwise the clone root. With --path apps/calculator,
-      // this file (clone-root apps/calculator/js/calculator.js) is reported as:
+      // --path is given, otherwise the clone root. With --path legacy, the
+      // clone-root file legacy/js/calculator.js is reported as:
       "path": "js/calculator.js",
-      // after = real re-count of transformed source. One var was skipped, so
-      // after.var is 1 (not 0); one loose_equality was a nullish idiom, so
-      // after.loose_equality is 1. removed = before - after accounts for both.
+      // after = real re-count of the transformed source. Every skip below keeps
+      // one pattern in place, so removed = before - after accounts for them.
       // vendor_api and es5_prototype are reported-only in v1, so after == before.
-      "before": { "var": 30, "loose_equality": 12, "innerHTML": 3, "vendor_api": 1, "es5_prototype": 2 },
-      "after":  { "var": 1,  "loose_equality": 1,  "innerHTML": 0, "vendor_api": 1, "es5_prototype": 2 },
-      "transforms_applied": ["var_to_const_let", "loose_equality", "insecure_innerHTML"],
+      "before": { "var": 28, "loose_equality": 5, "innerHTML": 2, "vendor_api": 1, "es5_prototype": 0 },
+      "after":  { "var": 2,  "loose_equality": 5, "innerHTML": 1, "vendor_api": 1, "es5_prototype": 0 },
+      "transforms_applied": ["var_to_const_let", "insecure_innerHTML"],
       "skipped": [
-        { "transform": "var_to_const_let", "reason": "var in for-loop init with closure capture" },
-        { "transform": "loose_equality", "reason": "nullish-idiom" }
+        { "transform": "insecure_innerHTML", "reason": "dynamic-value-needs-review", "line": 23 },
+        { "transform": "loose_equality", "reason": "operand-types-unknown", "line": 33 },
+        { "transform": "loose_equality", "reason": "operand-types-unknown", "line": 56 },
+        { "transform": "loose_equality", "reason": "operand-types-unknown", "line": 58 },
+        { "transform": "loose_equality", "reason": "nullish-idiom", "line": 67 },
+        { "transform": "loose_equality", "reason": "operand-types-unknown", "line": 69 },
+        { "transform": "var_to_const_let", "reason": "global-scope", "line": 3 },
+        { "transform": "var_to_const_let", "reason": "switch-case", "line": 250 }
       ]
     }
+    // ... js/parser.js and the three test files omitted
   ],
-  "agent_signature": "Kiro Multi-Agent Orchestrator"
+  "agent_signature": "GhostRepo resurrect CLI"
 }
 ```
+
+`agent_signature` identifies the tool that generated the report. The CLI is
+deterministic and runs no agent, so the value does not imply that one did.
 
 **Honesty rules (hard requirements):**
 
@@ -385,7 +408,9 @@ expected to be numerically identical.
 4. Categories that v1 only reports but does not auto-fix (`dead_vendor_api`,
    `es5_prototype`) show `0` removed unless a transform genuinely removed them.
 5. Skips are recorded with reasons, so a low "removed" count is explainable
-   rather than hidden.
+   rather than hidden. Each entry has the shape `{ transform, reason, line }`
+   with the reason codes from §3 and §9. The only entry without `line` is the
+   file-level `parse` skip, `{ transform: "parse", reason }`.
 6. **`repository` derivation (all target shapes):** take the last path segment
    of the target and strip any trailing `.git` suffix. This is defined
    uniformly for `https://`/`http://`, `ssh://`, `git@host:owner/repo.git`, and
@@ -416,18 +441,18 @@ expected to be numerically identical.
 | Arg parse | Missing/invalid `<repo-url>` or bad `--path` | Fatal (before any work) | Usage message on stderr, exit `2` | stderr |
 | `git clone` | Network error, auth, bad URL, git not installed | Fatal | Error on stderr, exit `1`, no report written | stderr (full git stderr) |
 | Sparse checkout — `--path` yields no files | Path not present in repo | **Fatal** — do NOT full-clone (gaia is gigabytes) | `path not found in repo` on stderr, exit `2`, no report | stderr |
-| Sparse checkout — unsupported by git version | git too old for `sparse-checkout` | Recoverable → fall back to full shallow clone, warn | Warning on stderr; continues with full clone | stderr warning |
-| File walk | Permission error on a file | Recoverable | File marked skipped with reason; walk continues | per-file entry in report |
+| Sparse checkout — `git clone --sparse` or `git sparse-checkout set` fails (e.g. git too old) | git error | Fatal. A fallback to a full shallow clone is **not implemented in v1**. | Error on stderr, exit `1`, no report written | stderr (full git stderr) |
+| Reading a target file | Permission error on a file (local copy or scan read) | Fatal | Error on stderr, exit `1`, no report written | stderr |
+| File walk | Unreadable directory | Recoverable | Directory skipped silently; it is **not** listed in the report | — |
 | AST parse of a file | Syntax the parser rejects | Recoverable | File counted as `files_skipped`, no transform attempted, reason recorded | report `files[].skipped` |
 | Individual codemod on a node | Node fails the safety check | Recoverable | Node left unchanged, skip recorded with reason | report `files[].skipped` |
 | Writing transformed file | fs write error | Fatal for that file → abort run (avoid half-written tree) | Error on stderr, exit `1` | stderr |
-| Diff for `lines_changed` | git unavailable / diff fails | Recoverable | `lines_changed: 0` (honest zero) | stderr warning |
 | Writing report | fs write error | Fatal | Error on stderr, exit `1` | stderr |
 
 Design stance: **parse and per-node transform failures are always recoverable
 and never corrupt output** — the conservative rule is "when in doubt, skip and
-record." Only I/O that would leave the working tree inconsistent (a failed file
-write) aborts the run. The original target repo is never modified in place, so
+record." I/O errors are not: a file that cannot be read (while copying a local
+target or reading it for the scan) or a failed file write aborts the run. The original target repo is never modified in place, so
 an aborted run is always safe to rerun.
 
 ---
@@ -513,8 +538,11 @@ statically known and equal (`nullish-idiom`, `operand-types-unknown`).
   `0`/`null` fallbacks.
 - **Integration tested:** `pipeline.js` against the local fixture used as a fake
   "repo" (a local path target), verifying a real `resurrection-report.json` is
-  produced end-to-end with only measured values — no network required.
-- **Manual / demo:** a real run against `mozilla-b2g/gaia --path apps/calculator`
+  produced end-to-end with only measured values — no network required. See
+  `test/pipeline.test.js` (`processTree` and `run`, including the `NO_CHANGES`
+  and `SCANNED_ONLY` statuses).
+- **Manual / demo:** a real run against the recovered Gaia calculator
+  (`LucioD3v/ghostrepo-gaia-calculator --path legacy`, or a local copy of it)
   produces a `resurrection-report.json` whose numbers reflect **only the three
   v1 codemods** (`var`, loose equality, `innerHTML`). These numbers will be
   **lower than the README's showcase** (777 lines / 63 patterns / 20-20 tests).
@@ -539,11 +567,15 @@ fixture (§10); a sample `resurrection-report.json` with only measured values is
 produced from a real fixture run (§7, §10); this doc explains the 4-phase flow
 (§3), the supported scope (§2), and what the CLI does vs. does not do (§2). The
 gitignored `targets/` and `ghostrepo-gaia-calculator/` folders are never touched
-(§2), and `.gitignore` / `.kiro/` tracking are left unchanged (§5).
+(§2). `.kiro/` stays tracked and `.gitignore` only gained entries for internal
+and generated artifacts (§5).
 
 ---
 
 ## 12. Responses to design review (round 1)
+
+> Historical record of the design review. Where an item disagrees with §3 or
+> §9, those sections describe the current behavior.
 
 Review verdict: CHANGES_REQUESTED (2 HIGH, 4 MEDIUM, 4 NIT). All ten findings
 were **addressed** — none backlogged or ignored — because each aligned with the
@@ -580,8 +612,10 @@ outval`).
    `node resurrect …` / `npx resurrect …` for Windows alongside the POSIX
    `./resurrect` form.
 8. **NIT — sparse-checkout fallback.** Fixed in §8: if `--path` yields no files,
-   exit `2` with `path not found in repo` (no multi-GB full-clone fallback);
-   full-clone fallback happens only when sparse-checkout itself is unsupported.
+   exit `2` with `path not found in repo` (no multi-GB full-clone fallback). A
+   fallback to a full shallow clone when sparse-checkout itself is unsupported
+   was proposed but is **not implemented in v1**; that case fails with a git
+   error (§8).
 9. **NIT — `repository` derivation.** Fixed in §7 honesty rule 6: last path
    segment with `.git` stripped, defined for https/http/ssh/`git@`/local paths;
    `null` if underivable.
