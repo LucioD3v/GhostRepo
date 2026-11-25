@@ -6,60 +6,181 @@
          previewed code from navigating its frame to another site. -->
     <meta http-equiv="Content-Security-Policy" content="frame-src 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GhostRepo · Resurrect dead JavaScript repositories</title>
-    <meta name="description" content="Paste the URL of a dead GitHub repository. GhostRepo checks whether it can be resurrected, shows the changes next to the original, runs the result, and prepares a pull request." />
+    <title>GhostRepo · Raise dead JavaScript repositories</title>
+    <meta name="description" content="Paste a GitHub link to an abandoned JavaScript web app. GhostRepo checks whether it can rise, modernizes it with codemods that only touch what is provably safe, and runs the original and the resurrected app side by side." />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <a class="skip" href="#repo-url">Skip to the repository form</a>
+
+    <!-- Decorative night sky: moon and drifting fog. The graveyard skyline is in the footer. -->
+    <div class="sky" aria-hidden="true">
+      <div class="moon"></div>
+      <div class="fog fog-1"></div>
+      <div class="fog fog-2"></div>
+    </div>
+
     <header class="top">
       <div class="wrap">
-        <p class="logo"><span aria-hidden="true">👻</span> GhostRepo</p>
-        <a class="gh" href="https://github.com/LucioD3v/GhostRepo" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+        <a class="logo" href="./">
+          <svg class="logo-ghost" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4C19 4 10 14 10 27v29l7-5 7 5 8-5 8 5 7-5 7 5V27C54 14 45 4 32 4Z" /><circle cx="25" cy="27" r="4" /><circle cx="39" cy="27" r="4" /></svg>
+          GhostRepo
+        </a>
+        <nav class="nav" aria-label="Sections">
+          <a href="#ritual">How it works</a>
+          <a href="#scope">What it can raise</a>
+          <a href="https://github.com/LucioD3v/GhostRepo" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+        </nav>
       </div>
     </header>
 
     <main class="wrap">
       <section class="hero" aria-labelledby="hero-title">
-        <h1 id="hero-title">Bring a dead JavaScript repository back to life.</h1>
-        <p class="lead">
-          Paste a GitHub URL. GhostRepo first tells you whether it can be resurrected, then modernizes it with
-          AST-based codemods that skip anything not provably safe, and shows you every change.
-        </p>
+        <div class="hero-copy">
+          <p class="kicker"><span aria-hidden="true">🎃</span> Built with Kiro for Kiroween · Resurrection</p>
+          <h1 id="hero-title">Raise your dead <span class="glow">JavaScript</span> from the grave.</h1>
+          <p class="lead">
+            Paste a GitHub link to an abandoned web app. GhostRepo checks whether it can rise, rewrites legacy
+            patterns with codemods that only touch what is provably safe, and runs the original and the
+            resurrected app side by side.
+          </p>
+          <ul class="scope-pills" aria-label="What GhostRepo revives">
+            <li>JavaScript</li>
+            <li>HTML pages and their scripts</li>
+            <li>ES5 and jQuery-era web apps</li>
+          </ul>
+          <p class="not-java">JavaScript, not Java: they are different languages. Repositories in other languages are detected and you are told why before any work is done.</p>
 
-        <form id="repo-form" class="form" novalidate>
-          <label for="repo-url">GitHub repository URL</label>
-          <div class="row">
-            <input id="repo-url" name="repo" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo" aria-describedby="form-message" aria-invalid="false" />
-            <button id="analyze-btn" class="primary" type="submit">Analyze</button>
+          <form id="repo-form" class="form" novalidate>
+            <label for="repo-url">Link to a dead GitHub repository</label>
+            <div class="row">
+              <input id="repo-url" name="repo" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo" aria-describedby="form-message form-hint" aria-invalid="false" />
+              <button id="analyze-btn" class="primary summon" type="submit"><span aria-hidden="true">👻</span> Analyze</button>
+            </div>
+            <p id="form-hint" class="hint">Public repositories only. Nothing is downloaded or run until you say so.</p>
+            <details class="more">
+              <summary>Only one folder of the repository?</summary>
+              <label for="repo-folder">Subfolder</label>
+              <input id="repo-folder" name="folder" type="text" autocomplete="off" spellcheck="false" placeholder="apps/calculator" />
+            </details>
+            <p id="form-message" class="form-error" role="alert" hidden></p>
+          </form>
+
+          <div class="examples">
+            <span class="muted">Try one:</span>
+            <span id="examples" class="chips"></span>
           </div>
-          <details class="more">
-            <summary>Only a folder? (optional)</summary>
-            <label for="repo-folder">Subfolder</label>
-            <input id="repo-folder" name="folder" type="text" autocomplete="off" spellcheck="false" placeholder="apps/calculator" />
-          </details>
-          <p id="form-message" class="form-error" role="alert" hidden></p>
-        </form>
-
-        <div class="examples">
-          <span class="muted">Try an example:</span>
-          <span id="examples" class="chips"></span>
         </div>
+
+        <!-- Real engine output for this snippet (src/engine.js), not a mock-up. -->
+        <figure class="tomb" aria-labelledby="tomb-cap">
+          <figcaption id="tomb-cap" class="tomb-cap">What a resurrection looks like</figcaption>
+          <div class="code-pane dead-code">
+            <p class="pane-label"><span aria-hidden="true">🪦</span> Legacy</p>
+<pre><code>function showTotal(el, items) {
+  <del>var</del> total = 0;
+  for (let i = 0; i &lt; items.length; i++) total += items[i];
+  <del>var</del> label = 'Total: ' + total;
+  if (typeof label <del>==</del> 'string') el.title = label;
+  el.<del>innerHTML</del> = 'Ready';
+  return label;
+}</code></pre>
+          </div>
+          <div class="code-pane alive-code">
+            <p class="pane-label"><span aria-hidden="true">👻</span> Resurrected</p>
+<pre><code>function showTotal(el, items) {
+  <ins>let</ins> total = 0;
+  for (let i = 0; i &lt; items.length; i++) total += items[i];
+  <ins>const</ins> label = 'Total: ' + total;
+  if (typeof label <ins>===</ins> 'string') el.title = label;
+  el.<ins>textContent</ins> = 'Ready';
+  return label;
+}</code></pre>
+          </div>
+          <p class="tomb-note">Same behavior, modern syntax. Anything that cannot be proven safe is left as it was and listed with the reason.</p>
+        </figure>
       </section>
 
       <div id="out" class="out"></div>
       <p id="live" class="sr-only" aria-live="polite"></p>
       <noscript><p class="card">GhostRepo runs in your browser and needs JavaScript enabled.</p></noscript>
+
+      <section id="ritual" class="ritual" aria-labelledby="ritual-title">
+        <h2 id="ritual-title">The ritual, in four phases</h2>
+        <ol class="phase-cards">
+          <li>
+            <span class="phase-icon" aria-hidden="true">🔮</span>
+            <h3>Necromancy</h3>
+            <p>Reads the repository from GitHub and finds every JavaScript file worth reviving. Python, Java or PHP projects are told so here, before anything else happens.</p>
+          </li>
+          <li>
+            <span class="phase-icon" aria-hidden="true">✝️</span>
+            <h3>Exorcism</h3>
+            <p>Replaces <code>innerHTML = 'plain text'</code> with <code>textContent</code>. Dynamic HTML is flagged for a human, never rewritten blindly.</p>
+          </li>
+          <li>
+            <span class="phase-icon" aria-hidden="true">⚗️</span>
+            <h3>Transmutation</h3>
+            <p>Turns <code>var</code> into <code>const</code> or <code>let</code>, and <code>==</code> into <code>===</code> when both sides are known to have the same type.</p>
+          </li>
+          <li>
+            <span class="phase-icon" aria-hidden="true">👻</span>
+            <h3>Resurrection</h3>
+            <p>Shows every change next to the original, runs both versions, and gives you a patch and a ready-to-paste pull request.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="scope" class="scope" aria-labelledby="scope-title">
+        <h2 id="scope-title">What it can raise</h2>
+        <div class="scope-grid">
+          <div class="scope-card yes">
+            <h3><span aria-hidden="true">✅</span> Rises today</h3>
+            <ul>
+              <li>JavaScript web apps: <code>.js</code> files and the HTML pages that load them</li>
+              <li>ES5 code, jQuery-era sites, old browser and Firefox OS apps</li>
+              <li>A whole repository, or just one folder of it</li>
+            </ul>
+          </div>
+          <div class="scope-card no">
+            <h3><span aria-hidden="true">🪦</span> Stays buried, for now</h3>
+            <ul>
+              <li>Java, Python, PHP, C#, Ruby and other languages: detected and explained, not modified</li>
+              <li>Private repositories</li>
+              <li>Running the repository's own tests</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="vow" aria-labelledby="vow-title">
+        <h2 id="vow-title">The Zero Breaking Logic vow</h2>
+        <div class="vow-grid">
+          <p><strong>Provably safe or untouched.</strong> A rewrite is applied only when the syntax proves the behavior stays the same.</p>
+          <p><strong>Nothing hidden.</strong> Every skipped site is listed with its reason and line.</p>
+          <p><strong>Measured, not guessed.</strong> Every number comes from the actual code before and after.</p>
+        </div>
+      </section>
     </main>
 
-    <footer class="foot wrap">
-      <p>
-        <strong>Scope:</strong> JavaScript and web code only. Repositories in other languages are told so before any work is done.
-        Public GitHub repositories only. Everything runs in your browser; no code is sent to any server of ours.
-      </p>
-      <p class="muted">GhostRepo does not run a repository's own tests. Review the diff before you merge anything.</p>
+    <footer class="foot">
+      <svg class="graves" aria-hidden="true" viewBox="0 0 1440 160" preserveAspectRatio="none">
+        <path d="M0 160V118c60-6 120-4 180 2 50-30 110-34 170-4 70-12 150-10 220 6 60-26 140-30 200-2 80-12 170-8 250 6 70-22 150-24 220 0v34Z" />
+        <rect x="140" y="70" width="34" height="60" rx="17" />
+        <rect x="420" y="84" width="28" height="46" rx="14" />
+        <path d="M700 132V92h-12V80h12V66h12v14h12v12h-12v40Z" />
+        <rect x="980" y="76" width="36" height="58" rx="18" />
+        <rect x="1250" y="88" width="26" height="44" rx="13" />
+      </svg>
+      <div class="wrap">
+        <p>
+          Everything runs in your browser; no code is sent to any server of ours. Public GitHub repositories only.
+          GhostRepo does not run a repository's own tests, so review the diff before you merge anything.
+        </p>
+        <p class="muted">GhostRepo · MIT License · Built with Kiro for the Kiroween hackathon.</p>
+      </div>
     </footer>
 
     <script src="./app.js"></script>
