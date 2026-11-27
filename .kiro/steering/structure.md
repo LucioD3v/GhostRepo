@@ -69,8 +69,9 @@ GhostRepo/
 
 ## Key architectural boundaries
 
-- **`src/`** is pure logic — no DOM, no network, no filesystem access. Any code here must run in both Node and a browser Web Worker without modification.
+- **`src/engine.js`, `src/scan.js`, `src/exorcise.js`, `src/transmute.js`, `src/report.js`, `src/files.js`** are pure logic — no DOM, no network, no filesystem access. These modules must run in both Node and a browser Web Worker without modification.
+- **`src/pipeline.js`, `src/walk.js`** are CLI I/O — Node-only. They clone repos, read/write files via `fs`, call git, and call `engine.processFile`. They must never be imported by `web/src/`.
 - **`web/src/`** is browser-only. Never import Node built-ins here directly; use `web/shims/` for any that jscodeshift pulls in transitively.
-- **`scripts/`** is Node-only build/dev tooling. Never imported by src or web.
+- **`scripts/`** is Node-only build/dev tooling. Never imported by `src/` or `web/`.
 - **`test/`** runs in Node via `node:test`. Web tests mock browser APIs; they do not run in a browser.
 - **`dist/`** is generated — never edit files there manually.
