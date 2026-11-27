@@ -169,5 +169,5 @@ GhostRepo is released under the [MIT License](LICENSE). Resurrected projects kee
 
 ## 🏆 About
 
-Developed by **Vicente Guzmán** and **Silvestre** for the **Kiroween Hackathon (Resurrection)**.
+Developed by **Vicente Guzmán** for the **Kiroween Hackathon (Resurrection)**.
 Scan the dead. Banish the bugs. Bring the code back to life. 👻
