@@ -24,7 +24,7 @@ Consequence: GitHub Pages alone is enough. No `git`, no host to run, no abuse co
 
 ### 3. Live preview: one inlined document in a sandboxed iframe
 
-`web/src/preview.js` turns the project's files into a single HTML string: stylesheets become `<style>` (with `url()` inlined as data URIs), scripts become inline `<script>` (with `defer`/`async` scripts moved to the end of `<body>` to keep their timing), images become data URIs. The document goes in an `iframe` with `sandbox="allow-scripts"` and no `allow-same-origin`, plus a CSP that blocks the network.
+`web/src/preview.js` turns the project's files into a single HTML string: stylesheets become `<style>` (with `url()` inlined as data URIs), scripts become inline `<script>` (with `defer`/`async` scripts moved to the end of `<body>` to keep their timing), images become data URIs. The document goes in an `iframe` with `sandbox="allow-scripts"` and no `allow-same-origin`, plus a CSP that blocks the network. The page's own CSP keeps `frame-src 'none'`, so the previewed code cannot navigate its frame to another site. WebRTC is not covered by CSP: a server chosen by the previewed project could see the visitor's IP address, and the Run tab says so.
 
 Verified in Chrome from inside the frame that runs repository code: the parent page, `localStorage`, cookies and the network are all **blocked**. Chrome runs such frames out of process.
 
@@ -41,11 +41,11 @@ The commit "refactor: split the pure engine from disk access" moved everything t
 | Module | Role | Imports from Node |
 |---|---|---|
 | `src/files.js` | which files are processed | none |
-| `src/engine.js` | `processFile()`: one file through scan, exorcise, transmute, re-scan | none |
+| `src/engine.js` | `processFile()`: one file through scan, exorcise, transmute, re-scan; `processBytes()`: the same from raw bytes, skipping files that are not valid UTF-8 | none |
 | `src/scan.js`, `exorcise.js`, `transmute.js`, `report.js` | codemods, counters, report | none |
 | `src/walk.js`, `src/pipeline.js` | disk walker, git, output | `fs`, `path`, `os`, `child_process` |
 
-The CLI calls `processFile()` per file on disk; the UI calls it per file from memory. Tests pin that both give the same report and byte-identical files (`test/web-run.test.js`, on a tree with CRLF, minified files, `node_modules/`, a syntax error and subfolders), and that the browser's file rule equals the disk walker's (`test/engine.test.js`). The CLI's report and resurrected tree for the Gaia calculator are byte-identical to before the refactor.
+The CLI calls `processBytes()` per file on disk; the UI calls it per file from memory, inside a Web Worker (`web/src/worker.js`, driven by `web/src/run-worker.js`) so a long engine call never freezes the page and a new run terminates the old one. Tests pin that both give the same report and byte-identical files (`test/web-run.test.js`, on a tree with CRLF, minified files, `node_modules/`, a syntax error and subfolders), and that the browser's file rule equals the disk walker's (`test/engine.test.js`). The CLI's report and resurrected tree for the Gaia calculator are byte-identical to before the refactor.
 
 ### 6. Report signature in the UI
 
@@ -75,7 +75,7 @@ scripts/e2e-web.mjs              real Chrome against real GitHub (not part of np
 - Repository code is data. It is parsed and transformed, never executed, except inside the sandboxed preview after an explicit click.
 - Repository strings are inserted with `textContent` or text nodes only. Nothing in `web/src` assigns to `innerHTML`, `outerHTML` or `insertAdjacentHTML`, and nothing calls `eval`, `new Function` or `document.write`. The only occurrences of those words are labels, a comment, and one read of `outerHTML` that serializes the preview document into the `srcdoc` string.
 - Limits: 2,000 files and 25 MB per run (`LIMITS` in `assess.js`); `node_modules/` and `.git/` are never downloaded.
-- A file that is not valid UTF-8 is left unchanged and listed as skipped, because decoding it would corrupt it on write-back. A UTF-8 byte order mark is preserved.
+- A file that is not valid UTF-8 is left unchanged and listed as skipped, in both the CLI and the web app, because decoding it would corrupt it on write-back. A UTF-8 byte order mark is preserved.
 - No analytics, no third-party requests: only `api.github.com`, `raw.githubusercontent.com` and the host serving the page.
 
 ## Status against the requirements
@@ -93,10 +93,10 @@ scripts/e2e-web.mjs              real Chrome against real GitHub (not part of np
 | 9 Open the pull request from the UI | **Not built.** A browser-only site would need the user to paste an access token. It is deferred; the kit already covers the flow with no credentials. |
 | 10 Same engine as the CLI | Done, with parity tests |
 | 11 Safety and limits | Done |
-| 12 Public availability | Workflow written and its YAML validated. The site is live only after the branch is merged and *Settings → Pages → Source: GitHub Actions* is set. |
+| 12 Public availability | Done. Live at https://luciod3v.github.io/GhostRepo/, deployed by `.github/workflows/pages.yml` on every push to `main`. |
 | 13 Clear, accessible interface | Keyboard-operable tabs, labels, visible focus, a live region for status changes, and a 360 px layout (no horizontal scroll) checked in Chrome. All 18 text/background pairs used by the interface measure 7.52:1 or better (WCAG AA needs 4.5:1). A screen reader was not tested. |
 
 ## Verification
 
 - `npm test`: unit and parity tests for every web module, run against real `git apply` and `bsdtar` where relevant.
-- `npm run e2e:web`: 45 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases and a 360 px viewport.
+- `npm run e2e:web`: 46 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases and a 360 px viewport.

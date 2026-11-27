@@ -16,12 +16,11 @@ source of truth and the document is a bug.
 
 ## 1. Overview
 
-GhostRepo is a Kiro multi-agent orchestrator that "resurrects" abandoned
-JavaScript / web codebases. The 4-phase Resurrection Pipeline is already defined
-conceptually in [`.kiro/specs/resurrect-pipeline.yaml`](../.kiro/specs/resurrect-pipeline.yaml),
-and a manual proof-of-concept (the Firefox OS Gaia calculator) already proved the
-idea works by hand. `resurrect` turns that manual flow into a real, runnable Node
-CLI.
+GhostRepo "resurrects" abandoned JavaScript / web codebases with a
+deterministic 4-phase pipeline (Necromancy, Exorcism, Transmutation,
+Resurrection). A manual proof-of-concept (the Firefox OS Gaia calculator) first
+proved the idea by hand. `resurrect` turns that manual flow into a real,
+runnable Node CLI. The web app (`web/`) runs the same engine in the browser.
 
 The CLI is invoked from the repo root:
 
@@ -52,8 +51,7 @@ target, applies conservative AST codemods, and emits `resurrection-report.json`.
 Every number in that report is derived from an actual measurement of the code
 before and after; nothing is hardcoded.
 
-The guiding principle, inherited from the project's existing
-[`post-analysis.sh`](../.kiro/hooks/post-analysis.sh) hook and the README, is
+The guiding principle (see `.kiro/steering/architecture.md`) is
 **honesty over impressiveness**: if a value cannot be measured, the report emits
 `0` or `null` — never an invented figure.
 
@@ -138,15 +136,10 @@ The counts are gathered by parsing each file into an AST and counting matching
 nodes, which is more accurate than text search. Files that fail to parse are
 recorded as `skipped` with the parser error — they are **not** silently dropped.
 
-> **Note — AST counting is intentionally not identical to `post-analysis.sh`.**
-> The existing hook counts with `grep -E` regex (its `innerHTML` pattern counts
-> reads, writes, strings, and comments; its `[^=!<>]==[^=]|!=[^=]` pattern is
-> line/text based). The CLI counts distinct AST nodes (e.g. `innerHTML` only on
-> the LHS of an assignment). The two methods will legitimately produce different
-> numbers for the same file. The CLI is the **canonical counter for its own
-> report**; the hook is legacy tooling for the manual `legacy/ → src/`
-> resurrection and is unrelated to — and not expected to match — the CLI's
-> numbers.
+> **Note — AST counting, not text search.** An earlier regex script
+> (`post-analysis.sh`, since removed) counted with `grep -E`, which also matched
+> reads, strings and comments. The CLI counts distinct AST nodes (e.g.
+> `innerHTML` only on the LHS of an assignment) and is the **canonical counter**.
 
 ### Phase 2 — Exorcism (banish security smells & dead APIs)
 
@@ -334,11 +327,8 @@ forms before being handed to `git sparse-checkout`.
 ## 7. `resurrection-report.json` — schema & honesty rules
 
 The report is the contract with the user and the demo. It contains **only
-measured values**. Its *vocabulary* (phase/category names) deliberately echoes
-the existing `post-analysis.sh` output, but its *numbers* are produced by AST
-counting, not the hook's regex, and are the canonical figures for this report.
-See the counting note in §3 — the CLI report and the hook's output are not
-expected to be numerically identical.
+measured values**. Its *numbers* are produced by AST
+counting (see the counting note in §3) and are the canonical figures.
 
 ```jsonc
 {
@@ -549,7 +539,7 @@ statically known and equal (`nullish-idiom`, `operand-types-unknown`).
   v1 codemods** (`var`, loose equality, `innerHTML`). These numbers will be
   **lower than the README's showcase** (777 lines / 63 patterns / 20-20 tests).
   That showcase came from a broader *manual* resurrection — ES6 modules, `class`
-  conversion, `async/await` — measured by the regex `post-analysis.sh` hook over
+  conversion, `async/await` — measured by a regex script (since removed) over
   a hand-built `legacy/ → src/` tree. The CLI report and the README showcase are
   produced by **different processes and are not expected to match**; the gap is
   honest, not a defect. (The §7 sample's `lines_changed: 43` is likewise a
