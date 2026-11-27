@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # GhostRepo – Product Summary
 
 GhostRepo is a JavaScript legacy-code resurrection tool built for the **Kiroween Hackathon (Resurrection category)**. It takes an abandoned or legacy JavaScript web repository (via GitHub URL or local path) and safely modernizes it using AST-based codemods — no regex rewrites, no guessing.

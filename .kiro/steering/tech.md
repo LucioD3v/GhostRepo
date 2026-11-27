@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # GhostRepo – Tech Stack
 
 ## Runtime & language
