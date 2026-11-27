@@ -63,6 +63,14 @@ The whole resurrection runs in your browser. No code is sent to any server of ou
 
 ---
 
+## 🗺️ Architecture
+
+<div align="center">
+  <img src="docs/architecture.svg" alt="GhostRepo architecture diagram" width="860"/>
+</div>
+
+---
+
 ## 🔮 What the engine does
 
 The engine ([`src/engine.js`](src/engine.js)) is **identical code** in the CLI and in the browser — built on [jscodeshift](https://github.com/facebook/jscodeshift) AST transforms. No regex rewrites. No guessing.

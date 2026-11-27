@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="'Segoe UI', system-ui, sans-serif">
+  <!-- Background -->
+  <rect width="900" height="620" fill="#0d1117" rx="12"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="700">👻 GhostRepo — Architecture</text>
+  <text x="450" y="58" text-anchor="middle" fill="#8b949e" font-size="12">One engine. Two surfaces. Zero guessing.</text>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- LEFT COLUMN: CLI surface -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <rect x="30" y="78" width="180" height="44" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="120" y="96" text-anchor="middle" fill="#8b949e" font-size="10">CLI entry point</text>
+  <text x="120" y="112" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="600">resurrect</text>
+
+  <!-- arrow down -->
+  <line x1="120" y1="122" x2="120" y2="148" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="30" y="148" width="180" height="54" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="120" y="168" text-anchor="middle" fill="#8b949e" font-size="10">CLI orchestration</text>
+  <text x="120" y="184" text-anchor="middle" fill="#79c0ff" font-size="13" font-weight="600">src/pipeline.js</text>
+  <text x="120" y="197" text-anchor="middle" fill="#8b949e" font-size="9">clone · walk · read · write · report</text>
+
+  <!-- label: Node only -->
+  <rect x="62" y="208" width="116" height="17" rx="4" fill="#1f2937"/>
+  <text x="120" y="220" text-anchor="middle" fill="#f97316" font-size="9" font-weight="600">Node-only (fs, git, child_process)</text>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- RIGHT COLUMN: Web surface -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <rect x="690" y="78" width="180" height="44" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="780" y="96" text-anchor="middle" fill="#8b949e" font-size="10">Browser</text>
+  <text x="780" y="112" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="600">web/src/main.js</text>
+
+  <!-- arrow down -->
+  <line x1="780" y1="122" x2="780" y2="148" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="690" y="148" width="180" height="54" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="780" y="168" text-anchor="middle" fill="#8b949e" font-size="10">Web Worker</text>
+  <text x="780" y="184" text-anchor="middle" fill="#79c0ff" font-size="13" font-weight="600">web/src/worker.js</text>
+  <text x="780" y="197" text-anchor="middle" fill="#8b949e" font-size="9">off-thread · cancellable</text>
+
+  <!-- label: Browser only -->
+  <rect x="718" y="208" width="124" height="17" rx="4" fill="#1f2937"/>
+  <text x="780" y="220" text-anchor="middle" fill="#a78bfa" font-size="9" font-weight="600">Browser-only (no Node built-ins)</text>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- CENTER: Pure engine box -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <rect x="230" y="68" width="440" height="490" rx="12" fill="#161b22" stroke="#21262d" stroke-width="2"/>
+  <rect x="230" y="68" width="440" height="28" rx="12" fill="#21262d"/>
+  <rect x="230" y="84" width="440" height="12" fill="#21262d"/>
+  <text x="450" y="87" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="600">PURE ENGINE — src/engine.js · src/scan.js · src/exorcise.js · src/transmute.js · src/report.js · src/files.js</text>
+
+  <!-- processFile() label -->
+  <rect x="330" y="102" width="240" height="26" rx="6" fill="#0d1117" stroke="#30363d"/>
+  <text x="450" y="119" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="700">processFile(relPath, source)  /  processBytes()</text>
+
+  <!-- divider -->
+  <line x1="250" y1="140" x2="650" y2="140" stroke="#21262d" stroke-width="1"/>
+  <text x="450" y="156" text-anchor="middle" fill="#8b949e" font-size="10">No DOM · No fs · No network — runs identically in Node and in a browser Web Worker</text>
+
+  <!-- Phase 1 -->
+  <rect x="250" y="168" width="380" height="62" rx="8" fill="#0d1117" stroke="#21262d"/>
+  <rect x="250" y="168" width="6" height="62" rx="3" fill="#f97316"/>
+  <text x="270" y="185" fill="#f97316" font-size="10" font-weight="700">PHASE 1 — NECROMANCY</text>
+  <text x="270" y="200" fill="#8b949e" font-size="10">src/scan.js · countPatterns()</text>
+  <text x="270" y="216" fill="#6e7681" font-size="9">var · loose == · innerHTML · vendor-prefix · ES5 .prototype</text>
+  <text x="560" y="200" text-anchor="end" fill="#e6edf3" font-size="10" font-weight="600">→ before baseline</text>
+
+  <!-- arrow -->
+  <line x1="440" y1="230" x2="440" y2="248" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Phase 2 -->
+  <rect x="250" y="248" width="380" height="62" rx="8" fill="#0d1117" stroke="#21262d"/>
+  <rect x="250" y="248" width="6" height="62" rx="3" fill="#a78bfa"/>
+  <text x="270" y="265" fill="#a78bfa" font-size="10" font-weight="700">PHASE 2 — EXORCISM</text>
+  <text x="270" y="280" fill="#8b949e" font-size="10">src/exorcise.js</text>
+  <text x="270" y="296" fill="#6e7681" font-size="9">innerHTML = 'plain text'  →  textContent = 'plain text'   (markup/dynamic: skipped + reason)</text>
+
+  <!-- arrow -->
+  <line x1="440" y1="310" x2="440" y2="328" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Phase 3 -->
+  <rect x="250" y="328" width="380" height="62" rx="8" fill="#0d1117" stroke="#21262d"/>
+  <rect x="250" y="328" width="6" height="62" rx="3" fill="#79c0ff"/>
+  <text x="270" y="345" fill="#79c0ff" font-size="10" font-weight="700">PHASE 3 — TRANSMUTATION</text>
+  <text x="270" y="360" fill="#8b949e" font-size="10">src/transmute.js</text>
+  <text x="270" y="376" fill="#6e7681" font-size="9">var → const/let (provably safe)   ·   == / != → === / !== (types known)</text>
+
+  <!-- arrow -->
+  <line x1="440" y1="390" x2="440" y2="408" stroke="#484f58" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Phase 4 -->
+  <rect x="250" y="408" width="380" height="62" rx="8" fill="#0d1117" stroke="#21262d"/>
+  <rect x="250" y="408" width="6" height="62" rx="3" fill="#3fb950"/>
+  <text x="270" y="425" fill="#3fb950" font-size="10" font-weight="700">PHASE 4 — RESURRECTION</text>
+  <text x="270" y="440" fill="#8b949e" font-size="10">src/engine.js re-runs countPatterns() · src/report.js</text>
+  <text x="270" y="456" fill="#6e7681" font-size="9">re-scan after → lines_changed · before-after per category → resurrection-report.json</text>
+
+  <!-- Zero Breaking Logic badge -->
+  <rect x="250" y="482" width="380" height="30" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1"/>
+  <text x="440" y="502" text-anchor="middle" fill="#3fb950" font-size="10" font-weight="700">🛡 Zero Breaking Logic — every rewrite proven safe from the AST · skips listed with line + reason</text>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- BOTTOM ROW: outputs -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <!-- CLI output -->
+  <rect x="30" y="530" width="180" height="62" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="120" y="550" text-anchor="middle" fill="#8b949e" font-size="10">CLI writes to disk</text>
+  <text x="120" y="566" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600">resurrected/</text>
+  <text x="120" y="581" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600">resurrection-report.json</text>
+
+  <!-- Web output -->
+  <rect x="690" y="530" width="180" height="62" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="780" y="550" text-anchor="middle" fill="#8b949e" font-size="10">Browser generates in-memory</text>
+  <text x="780" y="566" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600">diff · zip · .patch</text>
+  <text x="780" y="581" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600">PR kit · compare link</text>
+
+  <!-- Arrows from surfaces to engine -->
+  <line x1="210" y1="175" x2="228" y2="310" stroke="#484f58" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <line x1="690" y1="175" x2="672" y2="310" stroke="#484f58" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Arrows from engine to outputs -->
+  <line x1="250" y1="490" x2="180" y2="540" stroke="#484f58" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+  <line x1="650" y1="490" x2="720" y2="540" stroke="#484f58" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Arrow from pipeline to CLI output -->
+  <line x1="120" y1="225" x2="120" y2="528" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Arrow from worker to web output -->
+  <line x1="780" y1="225" x2="780" y2="528" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#484f58"/>
+    </marker>
+  </defs>
+</svg>
