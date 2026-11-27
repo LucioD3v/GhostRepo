@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "zero-breaking-logic-tests",
+      "description": "Run the whole test suite, including the Zero Breaking Logic side-by-side cases, whenever the agent saves a .js file under src/ (the engine or web/src/) or test/.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|[\\\\/])(src|test)[\\\\/].*\\.js$",
+      "action": { "type": "command", "command": "npm test" },
+      "timeout": 180
+    }
+  ]
+}

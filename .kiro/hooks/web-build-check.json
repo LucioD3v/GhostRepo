@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "web-build-check",
+      "description": "Rebuild the browser bundles when the agent saves web code. The build fails if a Node-only module slips into the bundle or a cache-busting reference goes missing.",
+      "trigger": "PostFileSave",
+      "matcher": "(^|[\\\\/])web[\\\\/]",
+      "action": { "type": "command", "command": "npm run build:web" },
+      "timeout": 120
+    }
+  ]
+}

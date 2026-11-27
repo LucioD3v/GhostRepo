@@ -51,7 +51,35 @@ test('the kit has a branch, title, commit message, description and commands', ()
   assert.equal(kit.commands[0], 'git clone https://github.com/o/r.git');
   assert.ok(kit.commands.includes('git apply --index ../ghostrepo-resurrect.patch'));
   assert.ok(kit.commands.includes('gh repo fork --remote'), 'the push goes to a fork, not to the original');
+  assert.ok(kit.commands.at(-2).startsWith('git push -u origin ghostrepo/resurrect-js-'));
+  assert.ok(kit.commands.at(-1).startsWith('gh pr create '));
+});
+
+// --- open-pull-request spec, task 3 -----------------------------------------------------
+
+test('the kit ends with gh pr create against the original repository, reading the description from a file', () => {
+  const { report } = reportFor([['legacy-sample.js', FIXTURE]]);
+  const kit = buildPrKit(kitInput(report, { bodyFileName: 'ghostrepo-pull-request.md' }));
+  assert.equal(kit.archived, false);
+  assert.equal(kit.bodyFileName, 'ghostrepo-pull-request.md');
+  assert.equal(kit.commands.at(-1), `gh pr create --repo o/r --title "${kit.title}" --body-file ../ghostrepo-pull-request.md`);
+  assert.ok(!/--base|--head/.test(kit.commands.at(-1)), 'no repository-controlled branch name is named');
+});
+
+test('an archived repository gets no pull request command: the kit stops at the push to the fork', () => {
+  const { report } = reportFor([['legacy-sample.js', FIXTURE]]);
+  const kit = buildPrKit(kitInput(report, { archived: true }));
+  assert.equal(kit.archived, true);
   assert.ok(kit.commands.at(-1).startsWith('git push -u origin ghostrepo/resurrect-js-'));
+  assert.ok(!kit.commands.some((c) => c.startsWith('gh pr ')));
+  assert.ok(kit.commands.includes('gh repo fork --remote'));
+});
+
+test('the description never appears in a command', () => {
+  const { report } = reportFor([['legacy-sample.js', FIXTURE]]);
+  const kit = buildPrKit(kitInput(report));
+  const all = kit.commands.join('\n');
+  for (const line of kit.body.split('\n').filter((l) => l.length > 20)) assert.ok(!all.includes(line), line);
 });
 
 test('the description reports the measured counts and nothing else', () => {

@@ -1,18 +1,57 @@
-# GhostRepo Architecture & Agent Steering Guide
+---
+inclusion: always
+---
 
-## Core Objective
-Transform abandoned, legacy, or dead repositories into production-ready, modern codebases through automated agent-driven analysis and refactoring workflows.
+# GhostRepo – Architecture
 
-## System Layers
-1. **Repository Scanner & Dead Code Detector:**
-   - Evaluates commit history velocity, dependency vulnerability age, and codebase entropy.
-   - Identifies "zombie code blocks" (e.g., deprecated APIs, unmaintained COBOL/legacy modules, circular spaghetti dependencies).
-2. **Kiro Multi-Agent Orchestrator:**
-   - **Exorcist Agent:** Banish security vulnerabilities, buffer overflows, and critical syntax errors.
-   - **Alchemist Agent:** Converts legacy patterns into modern paradigms (e.g., Python 2 to Modern Python 3, callback hell to async/await, class components to hooks).
-3. **Automated Verification Pipeline:**
-   - Runs sandboxed test generation and execution to ensure zero functional regression post-refactoring.
+## Scope
 
-## Guardrails & Conventions
-- **Zero Breaking Logic:** All automated refactors must preserve the core business domain logic of the original project.
-- **Incremental Pull Requests:** Code transformations are structured into clean, reviewable, atomic pull requests with descriptive documentation of what was "resurrected".
+GhostRepo works on **JavaScript / web legacy code only**. It does not modernize Python, Java, PHP, COBOL, or any other language. Non-JS projects are detected early and rejected with an explanation. There are no AI agents, no multi-agent orchestrator, no "Exorcist Agent", no "Alchemist Agent".
+
+## The engine
+
+`src/engine.js` exports `processFile(relPath, source)`. It is **pure** — no filesystem, no network, no DOM. It runs identically in Node (CLI) and in a browser Web Worker (web app). This shared code path is what guarantees the CLI and the web app always produce the same output for the same input.
+
+The four phases:
+
+| Phase | Name | Module | What it does |
+|---|---|---|---|
+| 1 | **Necromancy** (scan) | `src/scan.js` | Counts five legacy patterns on the AST: `var`, loose `==`/`!=`, `innerHTML` assignments, vendor-prefixed APIs, ES5 `.prototype` assignments. Produces the **before** baseline. |
+| 2 | **Exorcism** | `src/exorcise.js` | Rewrites `element.innerHTML = rhs` → `element.textContent = rhs` **only** when `rhs` is a provably plain-text literal (no `<`, no `&`). Everything else is skipped with a reason. |
+| 3 | **Transmutation** | `src/transmute.js` | Rewrites `var` → `const`/`let` when scoping is provably unchanged. Rewrites `==`/`!=` → `===`/`!==` when both operand types are statically known and equal. Everything else is skipped with a reason. |
+| 4 | **Resurrection** (report) | `src/engine.js`, `src/report.js` | The engine re-runs `countPatterns` on the transformed source and counts lines changed; `report.js` computes `before - after` per category and assembles `resurrection-report.json`. |
+
+## Two surfaces, one engine
+
+```
+resurrect (CLI entry)
+  └── src/pipeline.js      clone / walk / read files / write output / write report
+        └── src/engine.js  processFile() — pure, shared
+
+web/src/worker.js (Web Worker)
+  └── src/engine.js        processFile() — same module, same code path
+```
+
+`src/pipeline.js` is the only module that touches the filesystem and git. `web/src/` is browser-only and never imports Node built-ins. See `docs/RESURRECT-CLI.md` for the full CLI design and `README.md` for the product overview.
+
+## Honesty over impressiveness
+
+Every number shown to the user is measured from the actual AST before and after the transform:
+
+- `after` counts are a **real re-run** of `countPatterns` on the transformed source, not a derived assumption.
+- `lines_changed` is an in-process line diff, not `git diff --shortstat`.
+- A value that cannot be measured is `0` (counts) or `null` (identifiers) — never an invented figure.
+- Categories that are reported but not auto-fixed (`vendor_api`, `es5_prototype`) show `0` removed unless a transform genuinely removed them.
+- `status` is `"RESURRECTED"` only when `files_transformed >= 1`; `"NO_CHANGES"` when scanned but nothing changed; `"SCANNED_ONLY"` when nothing to scan.
+- Skipped transforms are recorded with a reason and line number, never silently dropped.
+
+## Module boundaries
+
+| Layer | Modules | Rule |
+|---|---|---|
+| Pure engine | `src/engine.js`, `src/scan.js`, `src/exorcise.js`, `src/transmute.js`, `src/report.js`, `src/files.js` | No DOM, no `fs`, no network. Must run in Node and in a browser Web Worker unchanged. |
+| CLI I/O | `src/pipeline.js`, `src/walk.js` | Node-only. Clones repos, reads/writes files, calls `engine.processFile`. |
+| Web app | `web/src/**` | Browser-only. Never imports Node built-ins. Uses `web/shims/` for modules jscodeshift references but never executes in a browser. |
+| Build / dev | `scripts/**` | Node-only tooling. Never imported by `src/` or `web/`. |
+| Tests | `test/**` | Node `node:test`. Web tests mock browser APIs; they do not run in a browser. |
+| Build output | `dist/` | Generated by esbuild. Never edit by hand. |

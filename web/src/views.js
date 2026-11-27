@@ -6,7 +6,8 @@ import { diffLines, sideBySide } from './diff.js';
 import { summarizeSkips } from './prkit.js';
 import { buildPreviewDocument } from './preview.js';
 import { resurrectedFiles } from './result.js';
-import { buildArchive, buildReportJson, buildKit, buildPatch, PATCH_FILE_NAME } from './artifacts.js';
+import { buildArchive, buildReportJson, buildKit, buildPatch, PATCH_FILE_NAME, PR_BODY_FILE_NAME } from './artifacts.js';
+import { buildCompareLink, isValidGitHubUsername } from './pr-link.js';
 
 export const PHASES = [
   { id: 'necromancy', name: 'Necromancy', what: 'Acquire the files' },
@@ -75,6 +76,14 @@ export function renderAssessment({ assessment: a, commit, target, onResurrect, o
       ? h('p', { class: 'muted' }, `Last commit ${commit.date.slice(0, 10)} (${relativeAge(commit.date)}): `, commit.message || '(no message)')
       : null,
     h('ul', { class: 'details' }, a.details.map((d) => h('li', { text: d }))),
+    target.archived
+      ? h(
+          'p',
+          { class: 'archived-note', id: 'archived-note' },
+          h('strong', { text: 'Archived on GitHub. ' }),
+          'The repository is read-only and cannot receive pull requests. You can still resurrect it, download the result, or push it to your fork.',
+        )
+      : null,
     h('dl', { class: 'stats' }, stats.map(([k, v]) => h('div', {}, h('dt', { text: k }), h('dd', { text: v })))),
     a.languages.length
       ? h(
@@ -456,7 +465,8 @@ export function renderRunTab(result, { onDispose }) {
 
 // --- Download tab ----------------------------------------------------------------------
 
-export function renderDownloadTab(result, { repo, subfolder }) {
+export function renderDownloadTab(result, ctx) {
+  const { repo, subfolder } = ctx;
   const card = (title, text, label, onclick) => h('div', { class: 'dl-card' }, h('h3', { text: title }), h('p', { class: 'muted', text }), h('button', { type: 'button', onclick }, label));
   return h(
     'div',
@@ -464,6 +474,7 @@ export function renderDownloadTab(result, { repo, subfolder }) {
     card('Resurrected project', 'Every file of the analyzed folder, with the changed files rewritten. node_modules/ and .git/ are not included.', '⬇ Download .zip', () => saveFile(`${repo}-resurrected.zip`, buildArchive(result), 'application/zip')),
     card('Report', 'resurrection-report.json: the measured metrics and every skipped site.', '⬇ Download report', () => saveFile('resurrection-report.json', buildReportJson(result), 'application/json')),
     card('Patch', 'Only the changes, as a unified diff that git apply accepts.', '⬇ Download .patch', () => saveFile(PATCH_FILE_NAME, buildPatch(result, subfolder), 'text/x-diff')),
+    card('Pull request description', `${PR_BODY_FILE_NAME}: the description generated from the report, for gh pr create --body-file or to paste on GitHub.`, '⬇ Download description', () => saveFile(PR_BODY_FILE_NAME, buildKit(result, ctx).body, 'text/markdown')),
   );
 }
 
@@ -481,15 +492,95 @@ function copyBlock(label, text, { multiline = true, rows = 6 } = {}) {
   );
 }
 
+// "Open pull request on GitHub" without a login (.kiro/specs/open-pull-request, requirement 4).
+// The username is only ever read into the link below: never stored or sent.
+function renderOpenPrLink(kit, ctx) {
+  const help = h('p', { class: 'muted', id: 'open-pr-help' });
+  const input = h('input', {
+    id: 'gh-user',
+    type: 'text',
+    autocomplete: 'off',
+    spellcheck: 'false',
+    placeholder: 'your-github-username',
+    'aria-describedby': 'open-pr-help',
+    'aria-invalid': 'false',
+  });
+  const link = h('a', { class: 'btn primary', id: 'open-pr-link', target: '_blank', rel: 'noopener noreferrer', 'aria-disabled': 'true' }, 'Open pull request on GitHub ↗');
+  const baseHelp = 'Push the branch to your fork first (the commands above do it). The link only opens GitHub\'s "Open a pull request" page with the title and description filled in; GhostRepo does not create the pull request, you do.';
+
+  function update() {
+    const user = input.value.trim();
+    const valid = isValidGitHubUsername(user);
+    input.setAttribute('aria-invalid', user && !valid ? 'true' : 'false');
+    const built = valid ? buildCompareLink({ owner: ctx.owner, repo: ctx.repo, base: ctx.defaultBranch, user, branch: kit.branch, title: kit.title, body: kit.body }) : null;
+    if (built) {
+      link.setAttribute('href', built.url);
+      link.setAttribute('aria-disabled', 'false');
+    } else {
+      link.removeAttribute('href');
+      link.setAttribute('aria-disabled', 'true');
+    }
+    help.textContent =
+      user && !valid
+        ? 'That is not a valid GitHub username: 1 to 39 letters, digits or single hyphens, not starting or ending with a hyphen.'
+        : built && built.shortened
+          ? `${baseHelp} The description was too long for a link and is shortened there; paste the full text from the field below.`
+          : baseHelp;
+  }
+  input.addEventListener('input', update);
+  update();
+
+  return h(
+    'div',
+    { class: 'open-pr' },
+    h('h3', { text: 'Without the GitHub CLI' }),
+    h('label', { for: 'gh-user', text: 'Your GitHub username (the owner of your fork)' }),
+    h('div', { class: 'row' }, input, link),
+    help,
+  );
+}
+
 export function renderPrTab(result, ctx) {
   const kit = buildKit(result, ctx);
   const repoUrl = `https://github.com/${ctx.owner}/${ctx.repo}`;
+  const files = `${kit.changedPaths.length} changed file${kit.changedPaths.length === 1 ? '' : 's'}`;
+  const forkHelp = '"gh repo fork --remote" (GitHub CLI) creates your fork and makes it origin; without the GitHub CLI, fork on GitHub, run git remote add fork https://github.com/<you>/' + ctx.repo + '.git and push to fork instead.';
+  const steps = kit.archived
+    ? [
+        'Download the patch into an empty folder and open a shell there: the commands clone the repository into that folder and read the patch from it.',
+        `Run the commands below. They branch from the exact commit that was analyzed and push the result to your fork. ${forkHelp}`,
+        'Your fork now holds the resurrection. Share it, keep developing it there, or download the resurrected project as a zip from the Download tab.',
+      ]
+    : [
+        `Download the patch and the description (${PR_BODY_FILE_NAME}) into the same empty folder and open a shell there: the commands clone the repository into that folder and read both files from it.`,
+        `Run the commands below. They branch from the exact commit that was analyzed. ${forkHelp}`,
+        'The last command, gh pr create, opens the pull request with the title and description. Without the GitHub CLI, use the button below instead.',
+      ];
   return h(
     'div',
     { class: 'pr-tab' },
-    h('p', {}, `This kit contains only the ${kit.changedPaths.length} changed file${kit.changedPaths.length === 1 ? '' : 's'}, as one atomic change. Nothing is sent anywhere: you decide when to push.`),
-    h('ol', { class: 'steps' }, h('li', {}, 'Download the patch into an empty folder and open a shell there: the commands clone the repository into that folder and read the patch from it.'), h('li', {}, 'Run the commands below. They branch from the exact commit that was analyzed. "gh repo fork --remote" (GitHub CLI) creates your fork and makes it origin; without the GitHub CLI, fork on GitHub, run git remote add fork https://github.com/<you>/' + ctx.repo + '.git and push to fork instead.'), h('li', {}, 'Open the pull request from your fork and paste the title and description.')),
-    h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: () => saveFile(PATCH_FILE_NAME, kit.patch, 'text/x-diff') }, `⬇ Download ${PATCH_FILE_NAME}`), h('a', { class: 'btn', href: repoUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Open the repository on GitHub')),
+    kit.archived
+      ? h(
+          'p',
+          { class: 'archived-note', id: 'pr-archived-note' },
+          h('strong', { text: 'This repository is archived. ' }),
+          'It is read-only on GitHub, so it cannot receive a pull request. The commands below push the resurrection to your fork instead.',
+        )
+      : null,
+    h('p', {}, `This kit contains only the ${files}, as one atomic change. Nothing is sent anywhere: you decide when to push.`),
+    h('ol', { class: 'steps' }, steps.map((s) => h('li', { text: s }))),
+    h(
+      'div',
+      { class: 'actions' },
+      h('button', { type: 'button', class: 'primary', onclick: () => saveFile(PATCH_FILE_NAME, kit.patch, 'text/x-diff') }, `⬇ Download ${PATCH_FILE_NAME}`),
+      kit.archived ? null : h('button', { type: 'button', onclick: () => saveFile(PR_BODY_FILE_NAME, kit.body, 'text/markdown') }, `⬇ Download ${PR_BODY_FILE_NAME}`),
+      h('a', { class: 'btn', href: repoUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Open the repository on GitHub'),
+    ),
+    kit.archived
+      ? null
+      : ctx.defaultBranch
+        ? renderOpenPrLink(kit, ctx)
+        : h('p', { class: 'muted', text: 'GitHub did not report a default branch for this repository, so the one-click link is not offered. The gh pr create command still works.' }),
     copyBlock('Branch name', kit.branch, { multiline: false }),
     copyBlock('Commands', kit.commands.join('\n'), { rows: Math.min(kit.commands.length + 1, 10) }),
     copyBlock('Commit message', kit.commitMessage, { rows: 5 }),

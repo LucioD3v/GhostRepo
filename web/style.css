@@ -139,6 +139,20 @@ button.primary { background: var(--pumpkin); color: var(--pumpkin-ink); border-c
 button.primary:hover:not(:disabled) { border-color: #ffd0a8; filter: brightness(1.06); }
 button.primary:disabled { background: var(--panel-2); color: var(--muted); border-color: var(--line); box-shadow: none; }
 button.linkish { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 500; }
+.btn.primary { background: var(--pumpkin); color: var(--pumpkin-ink); border-color: var(--pumpkin); }
+.btn[aria-disabled='true'] { background: var(--panel-2); color: var(--muted); border-color: var(--line); cursor: not-allowed; opacity: .6; }
+.btn[aria-disabled='true']:hover { border-color: var(--line); }
+
+/* Archived repository notice (assessment and Pull request tab). */
+.archived-note { border-left: 3px solid var(--warn); background: rgba(255, 211, 122, .08); padding: .7rem .9rem; border-radius: 0 10px 10px 0; }
+.archived-note strong { color: var(--warn); }
+
+/* One-click pull request link (Pull request tab). */
+.open-pr { margin-top: 1.2rem; padding: 1rem; background: var(--panel-2); border-radius: 12px; }
+.open-pr h3 { margin: 0 0 .6rem; }
+.open-pr label { display: block; font-weight: 700; margin-bottom: .4rem; }
+.open-pr p { margin: .6rem 0 0; font-size: .92rem; }
+@media (max-width: 560px) { .open-pr .row { flex-direction: column; } }
 .summon { padding-inline: 1.4rem; }
 
 .examples { margin-top: .9rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }

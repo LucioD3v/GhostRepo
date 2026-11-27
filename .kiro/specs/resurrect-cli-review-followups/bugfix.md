@@ -18,7 +18,7 @@ This spec closes the four agreed follow-ups. The numbering F1 to F4 follows the 
 
 Out of scope, and not to be touched here: the receiver-dependent `innerHTML`→`textContent` semantics (review item 5); review nits 6, 7, 8, 9 and 11 (`node_modules` copied into `--out-dir`, `lineDiffCount` being a multiset, a file listed as transformed but not written, `RESURRECTED` status ignoring `files_skipped`, `engines`/Node 20); new features (automatic PR, agents); and any change to codemods or skip rules. `.kiro/hooks/post-analysis.sh` and the README describe the manual, legacy-regex flow and are also not modified, even though the hook contains the same signature string.
 
-Constraints: `src/transmute.js`, `src/exorcise.js` and `src/scan.js` are not modified. The Gaia calculator run (`ghostrepo-gaia-calculator/legacy`) must stay identical at 29 patterns removed (28 `var` + 1 `innerHTML`). The suite today is 29/29 green. Node >=20, ESM, `node:test`, exact-pinned dependencies and no new ones. Existing EOL (CRLF) is preserved when editing. Work ships as atomic, reviewable commits on a new branch from `main`, not on `feat/resurrect-cli`.
+Constraints: `src/transmute.js`, `src/exorcise.js` and `src/scan.js` are not modified. The Gaia calculator run (`ghostrepo-gaia-calculator/legacy`) must stay identical at 29 patterns removed (28 `var` + 1 `innerHTML`). The suite today is 29/29 green. Node >=20, ESM, `node:test`, exact-pinned dependencies and no new ones. Existing line endings are preserved when editing (the repository stores LF; Windows checkouts with `core.autocrlf=true` show CRLF in the working copy). Work ships as atomic, reviewable commits on a new branch from `main`, not on `feat/resurrect-cli`.
 
 ## Bug Analysis
 
@@ -100,7 +100,7 @@ Constraints: `src/transmute.js`, `src/exorcise.js` and `src/scan.js` are not mod
 
 3.6 WHEN `package.json` and `package-lock.json` are inspected after this work, THEN the system SHALL CONTINUE TO pin dependencies to exact versions with no added or changed dependency, ESM (`"type": "module"`), and `engines` `node >=20`.
 
-3.7 WHEN the documentation is edited, THEN the system SHALL CONTINUE TO preserve the existing line endings of each edited file (CRLF where the file already uses CRLF), the v1 scope statement (JavaScript/web legacy only, deterministic, no agents, no automatic PR), and every section of `docs/RESURRECT-CLI.md` not named in F2 and F4, including the §9 skip-reason table and the §12/§13 review responses other than the §12 item 8 correction.
+3.7 WHEN the documentation is edited, THEN the system SHALL CONTINUE TO preserve the existing line endings of each edited file (LF in the repository), the v1 scope statement (JavaScript/web legacy only, deterministic, no agents, no automatic PR), and every section of `docs/RESURRECT-CLI.md` not named in F2 and F4, including the §9 skip-reason table and the §12/§13 review responses other than the §12 item 8 correction.
 
 3.8 WHEN the work is delivered, THEN the system SHALL CONTINUE TO keep each change in its own atomic commit on a new branch created from `main` (mode change, status header, signature code and tests, doc corrections, integration test), with `feat/resurrect-cli` untouched.
 

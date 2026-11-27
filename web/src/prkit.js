@@ -82,7 +82,7 @@ function prefixed(prefix, p) {
  * @param {string} input.toolUrl     where GhostRepo lives
  * @param {Date} [input.date]
  */
-export function buildPrKit({ report, owner, repo, sha, subfolder, changedPaths, patchFileName, toolUrl, date = new Date() }) {
+export function buildPrKit({ report, owner, repo, sha, subfolder, changedPaths, patchFileName, bodyFileName = 'ghostrepo-pull-request.md', archived = false, toolUrl, date = new Date() }) {
   if (!/^[0-9a-f]{40}$/.test(String(sha))) throw new Error('buildPrKit needs the full commit sha the patch was made against.');
   const m = report.metrics;
   const stamp = date.toISOString().slice(0, 10).replace(/-/g, '');
@@ -165,15 +165,22 @@ export function buildPrKit({ report, owner, repo, sha, subfolder, changedPaths, 
   // stages the change without naming any path. The title is built from fixed
   // strings only. `gh repo fork --remote` makes your fork `origin` (and the
   // original `upstream`), so the push works without write access to the original.
+  // `gh pr create` then opens the pull request from the pushed branch against the
+  // original repository's default branch; no base branch is named, because a
+  // branch name is repository-controlled. The description is read from a file,
+  // never inlined. An archived repository cannot receive pull requests, so its kit
+  // stops at the push to the fork.
+  const quotedTitle = `"${prTitle.replace(/"/g, '\\"')}"`;
   const commands = [
     `git clone https://github.com/${owner}/${repo}.git`,
     `cd ${repo}`,
     `git checkout -b ${branch} ${sha}`,
     `git apply --index ../${patchFileName}`,
-    `git commit -m "${prTitle.replace(/"/g, '\\"')}"`,
+    `git commit -m ${quotedTitle}`,
     'gh repo fork --remote',
     `git push -u origin ${branch}`,
   ];
+  if (!archived) commands.push(`gh pr create --repo ${owner}/${repo} --title ${quotedTitle} --body-file ../${bodyFileName}`);
 
-  return { branch, title: prTitle, commitMessage, body, commands, changedPaths: repoPaths };
+  return { branch, title: prTitle, commitMessage, body, commands, changedPaths: repoPaths, archived: Boolean(archived), bodyFileName };
 }

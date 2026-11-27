@@ -22,15 +22,15 @@ Automatic "modernizers" usually promise too much, and nobody merges a rewrite th
 
 Open **https://luciod3v.github.io/GhostRepo/** and paste a public GitHub repository link (optionally a subfolder).
 
-1. **Assessment.** From the file listing alone, before anything is downloaded, GhostRepo tells you whether the repository can be resurrected. A JavaScript web project can. A Python, Java or PHP project cannot, and it says why.
+1. **Assessment.** From the file listing alone, before anything is downloaded, GhostRepo tells you whether the repository can be resurrected. A JavaScript web project can. A Python, Java or PHP project cannot, and it says why. An archived repository is named as read-only, because GitHub rejects pull requests to it; it can still be resurrected.
 2. **Resurrection.** The files are fetched from GitHub and run through the engine in a background worker, so the page stays responsive and a new run cancels the old one.
 3. **Results**, in tabs:
    - **Code:** the modified code next to the original, with every skipped site marked and explained.
    - **Run:** the original and the resurrected app running side by side in sandboxed frames (when the project has an `index.html`).
-   - **Download:** the resurrected project as a zip, the JSON report and a `.patch` file.
-   - **Pull request:** branch name, the exact commands, commit message, title and description, all generated from the measured report.
+   - **Download:** the resurrected project as a zip, the JSON report, a `.patch` file and the pull request description.
+   - **Pull request:** branch name, the exact commands, commit message, title and description, all generated from the measured report. The commands fork, push and end with `gh pr create`. Without the GitHub CLI, type your username and **Open pull request on GitHub** opens GitHub's own page with the title and description filled in.
 
-Everything runs in your browser; no code is sent to a server of ours. GhostRepo never pushes anything for you.
+Everything runs in your browser; no code is sent to a server of ours, and there is no login or token. GhostRepo never pushes anything or opens a pull request for you: it prepares everything, and you press the button.
 
 **Limits.** Public GitHub repositories only. At most 2,000 files and 25 MB per run (pick a subfolder for bigger repositories). Links to branches whose name contains `/` are not supported yet. The preview frame cannot read the page or your data, and its network requests and navigations are blocked, but WebRTC is not: a server chosen by the previewed project could see your IP address. A very large unminified file (an 11,000-line jQuery, for example) takes a minute or more.
 
@@ -128,6 +128,14 @@ npm run e2e:web      # end-to-end check in a real Chrome, against GitHub (needs 
 
 **Deploying.** [.github/workflows/pages.yml](.github/workflows/pages.yml) runs the tests and the build on every pull request, and publishes `dist/` to GitHub Pages on every push to `main`. One-time setup: *Settings → Pages → Source: GitHub Actions*.
 
+## 👻 Built with Kiro
+
+The `.kiro/` folder holds how the project is steered, specified and guarded:
+
+- **Steering** ([.kiro/steering/](.kiro/steering/)): `product`, `tech` and `structure` (generated with Kiro's *Generate Steering Docs*, then corrected against the code), `architecture` (always included), `zero-breaking-logic` (included for `src/` and `test/`: the exact skip rules every rewrite must respect) and `web-security` (included for `web/`: text-only DOM insertion, no repository text in shell commands, the preview sandbox).
+- **Specs** ([.kiro/specs/](.kiro/specs/)): two bugfix specs for the CLI review findings, the `resurrect-web-ui` feature spec behind the web app, and `open-pull-request` (requirements → design → tasks, committed before its code) for the one-click pull request and archived-repository detection.
+- **Hooks** ([.kiro/hooks/](.kiro/hooks/)): `zero-breaking-logic-tests` runs `npm test` when the agent saves engine or test code; `web-build-check` rebuilds the bundles when web code changes; `guard-legacy-sources` blocks any agent write to a `legacy/` folder or `fixtures/` ([scripts/guard-legacy.js](scripts/guard-legacy.js)), because recovered code is the evidence every resurrection is measured against; `transform-safety-review` reviews the session's changes against the steering rules when the agent stops.
+
 ## 🏗️ Project structure
 
 ```
@@ -142,13 +150,13 @@ GhostRepo/
 │   └── files.js, walk.js, report.js
 ├── web/                   # the web app
 │   ├── index.html, style.css
-│   ├── src/               #   GitHub client, assessment, worker, diff, preview, zip, PR kit
+│   ├── src/               #   GitHub client, assessment, worker, diff, preview, zip, PR kit and link
 │   └── shims/             #   tiny stand-ins for Node modules the bundle never runs
-├── scripts/               # build-web, serve-web, e2e-web
+├── scripts/               # build-web, serve-web, e2e-web, guard-legacy (Kiro hook)
 ├── test/                  # node:test suites
 ├── fixtures/              # legacy-sample.js
 ├── docs/RESURRECT-CLI.md  # CLI design document
-└── .kiro/                 # Kiro specs and steering
+└── .kiro/                 # Kiro steering, specs and hooks
 ```
 
 ---
@@ -161,5 +169,5 @@ GhostRepo is released under the [MIT License](LICENSE). Resurrected projects kee
 
 ## 🏆 About
 
-Developed by **Vicente Guzmán** and **Silvestre** for the **Kiroween Hackathon (Resurrection)**.
+Developed by **Vicente Guzmán** for the **Kiroween Hackathon (Resurrection)**.
 Scan the dead. Banish the bugs. Bring the code back to life. 👻

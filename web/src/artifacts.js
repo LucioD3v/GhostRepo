@@ -7,6 +7,8 @@ import { buildPrKit } from './prkit.js';
 import { resurrectedFiles } from './result.js';
 
 export const PATCH_FILE_NAME = 'ghostrepo-resurrect.patch';
+/** The pull request description, read by `gh pr create --body-file`. */
+export const PR_BODY_FILE_NAME = 'ghostrepo-pull-request.md';
 
 const encoder = new TextEncoder();
 
@@ -42,7 +44,7 @@ export function buildPatch(result, subfolder) {
 }
 
 /** Everything the "Prepare pull request" panel shows. */
-export function buildKit(result, { owner, repo, sha, subfolder, toolUrl }) {
+export function buildKit(result, { owner, repo, sha, subfolder, archived = false, toolUrl }) {
   const kit = buildPrKit({
     report: result.report,
     owner,
@@ -51,6 +53,8 @@ export function buildKit(result, { owner, repo, sha, subfolder, toolUrl }) {
     subfolder,
     changedPaths: changedPaths(result),
     patchFileName: PATCH_FILE_NAME,
+    bodyFileName: PR_BODY_FILE_NAME,
+    archived,
     toolUrl,
   });
   return { ...kit, patch: buildPatch(result, subfolder) };
