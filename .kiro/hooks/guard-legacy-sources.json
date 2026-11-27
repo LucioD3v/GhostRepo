@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "guard-legacy-sources",
+      "description": "Block any agent write to a legacy/ folder or to fixtures/: recovered dead code and fixtures are the evidence every resurrection is measured against.",
+      "trigger": "PreToolUse",
+      "matcher": "write",
+      "action": { "type": "command", "command": "node scripts/guard-legacy.js" },
+      "timeout": 10
+    }
+  ]
+}

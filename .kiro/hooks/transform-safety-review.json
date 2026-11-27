@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "transform-safety-review",
+      "description": "When the agent finishes, review its changes against the Zero Breaking Logic and web security steering.",
+      "trigger": "Stop",
+      "action": {
+        "type": "agent",
+        "prompt": "Review the files changed in this session under src/ and web/. Check every changed code rewrite rule against .kiro/steering/zero-breaking-logic.md, and every changed web file against .kiro/steering/web-security.md. List each violation with file and line, and any new rewrite rule that lacks a side-by-side case in test/zero-breaking-logic.test.js. If nothing under src/ or web/ changed, or everything complies, answer only \"Zero Breaking Logic: OK\"."
+      }
+    }
+  ]
+}
