@@ -115,10 +115,13 @@ async function analyze(parsed) {
   announce('Assessing the repository');
 
   try {
+    // Metadata first: a missing repository stops here, and an archived one is
+    // named before any work (it cannot receive pull requests).
+    const meta = await client.getRepository({ owner, repo }, { signal });
     const commit = await client.resolveCommit({ owner, repo, ref }, { signal });
     const listing = await client.listFiles({ owner, repo, sha: commit.sha, subfolder }, { signal });
     const assessment = assessListing({ entries: listing.entries, truncated: listing.truncated });
-    const target = { owner, repo, ref, subfolder, sha: commit.sha, canonicalUrl: parsed.canonicalUrl };
+    const target = { owner, repo, ref, subfolder, sha: commit.sha, canonicalUrl: parsed.canonicalUrl, archived: meta.archived, defaultBranch: meta.defaultBranch };
 
     show(
       renderAssessment({
@@ -177,7 +180,15 @@ async function resurrect({ target, assessment, listing }) {
 
 function showResult({ result, target, assessment }) {
   const { report } = result;
-  const ctx = { owner: target.owner, repo: target.repo, sha: target.sha, subfolder: target.subfolder, toolUrl: TOOL_URL };
+  const ctx = {
+    owner: target.owner,
+    repo: target.repo,
+    sha: target.sha,
+    subfolder: target.subfolder,
+    archived: target.archived,
+    defaultBranch: target.defaultBranch,
+    toolUrl: TOOL_URL,
+  };
   const parts = [renderSummary(report)];
 
   if (report.status === 'RESURRECTED') {

@@ -24,7 +24,8 @@ GhostRepo/
 │   │   ├── diff.js        #   Myers line diff: side-by-side view and unified .patch
 │   │   ├── preview.js     #   Sandboxed iframe runner
 │   │   ├── zip.js         #   Zip generation (download)
-│   │   ├── prkit.js       #   Pull request text generator
+│   │   ├── prkit.js       #   Pull request kit: branch, commands (ending in gh pr create), title, description
+│   │   ├── pr-link.js     #   Prefilled GitHub compare link ("Open pull request on GitHub"), no login
 │   │   ├── run.js         #   The resurrection run: fetch files, run the engine, build the report (no DOM)
 │   │   ├── run-worker.js  #   Worker communication wrapper
 │   │   ├── views.js       #   DOM rendering functions (uses dom.js)
@@ -35,12 +36,14 @@ GhostRepo/
 ├── scripts/
 │   ├── build-web.mjs      #   esbuild bundler → dist/
 │   ├── serve-web.mjs      #   Local static server for dist/
-│   └── e2e-web.mjs        #   End-to-end test against real GitHub in Chrome
+│   ├── e2e-web.mjs        #   End-to-end test against real GitHub in Chrome
+│   └── guard-legacy.js    #   Kiro Pre Tool Use hook: blocks agent writes to legacy/ and fixtures/
 ├── test/                  # node:test suites (glob: test/**/*.test.js)
 │   ├── engine.test.js
 │   ├── transforms.test.js
 │   ├── pipeline.test.js
 │   ├── cli.test.js
+│   ├── guard-legacy.test.js
 │   ├── zero-breaking-logic.test.js  # VM sandbox regression guard
 │   └── web-*.test.js      #   Web-layer unit tests (assess, diff, github, preview, prkit, …)
 ├── fixtures/

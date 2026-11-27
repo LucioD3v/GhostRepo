@@ -172,3 +172,38 @@ test('fetchFile reports which file failed', async () => {
     (e) => e.code === 'file-failed' && e.path === 'x.js',
   );
 });
+
+// --- getRepository (open-pull-request spec, task 1) ---------------------------------
+
+test('getRepository returns archived and the default branch', async () => {
+  const f = fakeFetch([['/repos/o/r', { json: { archived: true, default_branch: 'master' } }]]);
+  const meta = await createGitHubClient({ fetch: f.impl }).getRepository({ owner: 'o', repo: 'r' });
+  assert.deepEqual(meta, { archived: true, defaultBranch: 'master' });
+  assert.equal(f.calls.length, 1);
+  assert.ok(f.calls[0].url.endsWith('/repos/o/r'));
+});
+
+test('getRepository: a repository that is not archived', async () => {
+  const f = fakeFetch([['/repos/o/r', { json: { archived: false, default_branch: 'main' } }]]);
+  assert.deepEqual(await createGitHubClient({ fetch: f.impl }).getRepository({ owner: 'o', repo: 'r' }), { archived: false, defaultBranch: 'main' });
+});
+
+test('getRepository: a missing or malformed default_branch is null, and only true means archived', async () => {
+  for (const json of [{}, { default_branch: '' }, { default_branch: 7, archived: 'yes' }]) {
+    const f = fakeFetch([['/repos/o/r', { json }]]);
+    assert.deepEqual(await createGitHubClient({ fetch: f.impl }).getRepository({ owner: 'o', repo: 'r' }), { archived: false, defaultBranch: null }, JSON.stringify(json));
+  }
+});
+
+test('getRepository: 404 is the not-found-or-private error', async () => {
+  const f = fakeFetch([['/repos/o/r', { status: 404 }]]);
+  await assert.rejects(
+    createGitHubClient({ fetch: f.impl }).getRepository({ owner: 'o', repo: 'r' }),
+    (e) => e instanceof GitHubError && e.code === 'not-found-or-private' && /private/.test(e.message),
+  );
+});
+
+test('getRepository: an exhausted rate limit is reported as such', async () => {
+  const f = fakeFetch([['/repos/o/r', { status: 403, headers: { 'x-ratelimit-remaining': '0' } }]]);
+  await assert.rejects(createGitHubClient({ fetch: f.impl }).getRepository({ owner: 'o', repo: 'r' }), (e) => e.code === 'rate-limited');
+});

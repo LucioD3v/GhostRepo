@@ -54,7 +54,30 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
     return { status: res.status, ok: res.ok, json: res.ok ? await res.json() : null, res };
   }
 
+  const notFound = (owner, repo) =>
+    new GitHubError(
+      'not-found-or-private',
+      `${owner}/${repo} was not found. It may not exist or it may be private (GitHub does not distinguish the two without a login, and only public repositories are supported).`,
+    );
+
   return {
+    /**
+     * Repository metadata the pull request kit needs.
+     * @returns {{archived:boolean, defaultBranch:string|null}}
+     */
+    async getRepository({ owner, repo }, opts = {}) {
+      const r = await getJson(`${api}/repos/${owner}/${repo}`, opts);
+      if (r.ok) {
+        const j = r.json || {};
+        return {
+          archived: j.archived === true,
+          defaultBranch: typeof j.default_branch === 'string' && j.default_branch ? j.default_branch : null,
+        };
+      }
+      if (r.status === 404) throw notFound(owner, repo);
+      throw new GitHubError('http', `GitHub answered with an unexpected status ${r.status}.`);
+    },
+
     /**
      * Resolve a branch/tag (or the default branch when `ref` is null) to a commit.
      * @returns {{sha:string, date:string|null, message:string}}
@@ -85,10 +108,7 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
             );
           }
         }
-        throw new GitHubError(
-          'not-found-or-private',
-          `${owner}/${repo} was not found. It may not exist or it may be private (GitHub does not distinguish the two without a login, and only public repositories are supported).`,
-        );
+        throw notFound(owner, repo);
       }
       throw new GitHubError('http', `GitHub answered with an unexpected status ${r.status}.`);
     },

@@ -90,7 +90,7 @@ scripts/e2e-web.mjs              real Chrome against real GitHub (not part of np
 | 6 Live run (sandboxed, original vs resurrected, error counts) | Done |
 | 7 Download (zip, report, patch) | Done |
 | 8 Pull request kit | Done |
-| 9 Open the pull request from the UI | **Not built.** A browser-only site would need the user to paste an access token. It is deferred; the kit already covers the flow with no credentials. |
+| 9 Open the pull request from the UI | Done **without a token**, by `.kiro/specs/open-pull-request`: the kit ends with `gh pr create`, and an "Open pull request on GitHub" link opens GitHub's compare page with the title and description filled in. The token-based flow of 9.1–9.6 was replaced, because a browser-only site should not ask for one. Archived repositories, which cannot receive pull requests, are named before any work. |
 | 10 Same engine as the CLI | Done, with parity tests |
 | 11 Safety and limits | Done |
 | 12 Public availability | Done. Live at https://luciod3v.github.io/GhostRepo/, deployed by `.github/workflows/pages.yml` on every push to `main`. |
@@ -99,4 +99,4 @@ scripts/e2e-web.mjs              real Chrome against real GitHub (not part of np
 ## Verification
 
 - `npm test`: unit and parity tests for every web module, run against real `git apply` and `bsdtar` where relevant.
-- `npm run e2e:web`: 46 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases and a 360 px viewport.
+- `npm run e2e:web`: 55 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases and a 360 px viewport.

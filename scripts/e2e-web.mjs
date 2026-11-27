@@ -294,7 +294,7 @@ async function main() {
     console.log('\n6. Download and pull request kit');
     await click('#tab-download');
     await waitFor(`!!document.querySelector('.download-tab')`, 'download tab');
-    check('three downloads are offered (zip, report, patch)', (await evalIn(`document.querySelectorAll('.download-tab .dl-card button').length`)) === 3);
+    check('four downloads are offered (zip, report, patch, PR description)', (await evalIn(`document.querySelectorAll('.download-tab .dl-card button').length`)) === 4);
     await click('#tab-pr');
     await waitFor(`!!document.querySelector('.pr-tab')`, 'pr tab');
     const pr = await evalIn(`Object.fromEntries([...document.querySelectorAll('.copy-block')].map(b => [b.querySelector('strong').textContent, (b.querySelector('textarea, input') || {}).value]))`);
@@ -304,6 +304,29 @@ async function main() {
     check('commands apply the patch from next to the clone, naming no path', /git apply --index \.\.\/ghostrepo-resurrect\.patch/.test(pr.Commands) && !/calculator\.js/.test(pr.Commands), pr.Commands);
     check('description says the repository tests were not run', /did \*\*not\*\* run this repository's tests/.test(pr['Pull request description']));
     check('description names no agent and claims no test results', !/\bagent\b|\bAI\b|Kiro|tests pass|no regression/i.test(pr['Pull request description']));
+    check('commands end with gh pr create against the original, reading the description file',
+      pr.Commands.trim().split('\n').at(-1) === `gh pr create --repo LucioD3v/ghostrepo-gaia-calculator --title "${pr['Pull request title']}" --body-file ../ghostrepo-pull-request.md`,
+      pr.Commands.trim().split('\n').at(-1));
+    check('the repository is not reported as archived', !(await evalIn(`!!document.getElementById('pr-archived-note')`)));
+
+    const typeUser = (u) => evalIn(`(() => { const i = document.getElementById('gh-user'); i.value = ${JSON.stringify(u)}; i.dispatchEvent(new Event('input')); const a = document.getElementById('open-pr-link'); return { href: a.getAttribute('href'), disabled: a.getAttribute('aria-disabled'), invalid: i.getAttribute('aria-invalid') }; })()`);
+    const before = await typeUser('');
+    check('the Open pull request link is disabled until a username is typed', before.href === null && before.disabled === 'true', JSON.stringify(before));
+    const badUser = await typeUser('not a user!');
+    check('an invalid username gives no link and is marked invalid', badUser.href === null && badUser.invalid === 'true', JSON.stringify(badUser));
+    const goodUser = await typeUser('octo-cat');
+    let compare = null;
+    try { compare = new URL(goodUser.href); } catch { /* checked below */ }
+    check('a valid username gives the prefilled compare link from the fork branch to main',
+      Boolean(compare) && compare.origin === 'https://github.com' &&
+        /^\/LucioD3v\/ghostrepo-gaia-calculator\/compare\/main\.\.\.octo-cat:ghostrepo\/resurrect-js-\d{8}$/.test(compare.pathname) &&
+        compare.searchParams.get('quick_pull') === '1' &&
+        compare.searchParams.get('title') === pr['Pull request title'] &&
+        compare.searchParams.get('body') === pr['Pull request description'] &&
+        goodUser.disabled === 'false',
+      goodUser.href && goodUser.href.slice(0, 160));
+    check('the link opens in a new tab without an opener', await evalIn(`(() => { const a = document.getElementById('open-pr-link'); return a.target === '_blank' && a.rel === 'noopener noreferrer'; })()`));
+    check('the page says GhostRepo does not create the pull request', /does not create the pull request/.test(await text('#open-pr-help')), await text('#open-pr-help'));
     await shot('06-pr', '.tabs-card');
 
     // --- 7. A repository that cannot be resurrected -------------------------------------------------------
@@ -315,6 +338,14 @@ async function main() {
     check('says it looks like Python, detected from extensions', /Python/.test(np) && /detected from file extensions/.test(np), np.slice(0, 400));
     check('Resurrect button is disabled', await evalIn(`document.getElementById('resurrect-btn').disabled`));
     await shot('07-not-supported');
+
+    console.log('\n7b. Archived repository (Firefox OS Gaia)');
+    await evalIn(`(() => { document.getElementById('repo-url').value = 'https://github.com/mozilla-b2g/gaia/tree/master/apps/search'; document.getElementById('repo-folder').value = ''; document.getElementById('repo-form').requestSubmit(); return true; })()`);
+    await waitFor(`!!document.getElementById('assessment') && /mozilla-b2g\\/gaia/.test(document.getElementById('assessment').textContent) && !document.querySelector('.busy')`, 'archived assessment', 90000);
+    const archivedText = await text('#archived-note');
+    check('an archived repository is named as archived and read-only before any work', /Archived on GitHub/.test(archivedText) && /cannot receive pull requests/.test(archivedText), archivedText);
+    check('an archived repository can still be resurrected', await evalIn(`!document.getElementById('resurrect-btn').disabled`));
+    await shot('07b-archived', '#assessment');
 
     // --- 8. Errors --------------------------------------------------------------------------------------------
     console.log('\n8. Errors from GitHub');
