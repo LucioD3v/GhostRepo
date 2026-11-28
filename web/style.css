@@ -30,12 +30,128 @@ body {
   background:
     radial-gradient(900px 520px at 82% -8%, rgba(143, 240, 196, .10), transparent 60%),
     radial-gradient(1100px 600px at 10% 0%, #221a45 0%, transparent 65%),
-    linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 55%) no-repeat,
+    radial-gradient(ellipse 140% 80% at 50% 0%, #0d0b22 0%, #080812 55%, #030208 100%),
     var(--bg);
   color: var(--text);
   font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Starfield: a fixed pseudo-element behind everything. The box-shadow list is a
+   hardcoded scatter of ~90 1–2 px dots at varied positions and opacities. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  /* 1px stars */
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    /* row 1 */
+    112px  43px 0 0 rgba(255,255,255,.72),
+    247px  18px 0 0 rgba(255,255,255,.55),
+    389px  67px 0 0 rgba(255,255,255,.80),
+    503px  29px 0 0 rgba(255,255,255,.45),
+    641px  11px 0 0 rgba(255,255,255,.65),
+    778px  52px 0 0 rgba(255,255,255,.38),
+    904px  33px 0 0 rgba(255,255,255,.70),
+    1037px 14px 0 0 rgba(255,255,255,.58),
+    1159px 44px 0 0 rgba(255,255,255,.48),
+    1298px 22px 0 0 rgba(255,255,255,.75),
+    1401px  8px 0 0 rgba(255,255,255,.42),
+    /* row 2 */
+     57px  91px 0 0 rgba(255,255,255,.60),
+    183px 112px 0 0 rgba(255,255,255,.35),
+    316px  88px 0 0 rgba(255,255,255,.68),
+    451px 134px 0 0 rgba(255,255,255,.50),
+    572px  79px 0 0 rgba(255,255,255,.78),
+    698px 143px 0 0 rgba(255,255,255,.33),
+    829px 101px 0 0 rgba(255,255,255,.62),
+    956px  74px 0 0 rgba(255,255,255,.47),
+    1082px 118px 0 0 rgba(255,255,255,.70),
+    1213px  93px 0 0 rgba(255,255,255,.40),
+    1365px 127px 0 0 rgba(255,255,255,.55),
+    /* row 3 */
+     98px 167px 0 0 rgba(255,255,255,.43),
+    224px 198px 0 0 rgba(255,255,255,.67),
+    347px 155px 0 0 rgba(255,255,255,.52),
+    488px 182px 0 0 rgba(255,255,255,.38),
+    619px 171px 0 0 rgba(255,255,255,.74),
+    743px 203px 0 0 rgba(255,255,255,.46),
+    878px 161px 0 0 rgba(255,255,255,.60),
+    1001px 194px 0 0 rgba(255,255,255,.35),
+    1134px 177px 0 0 rgba(255,255,255,.65),
+    1267px 209px 0 0 rgba(255,255,255,.49),
+    1390px 168px 0 0 rgba(255,255,255,.58),
+    /* row 4 */
+     31px 241px 0 0 rgba(255,255,255,.70),
+    162px 263px 0 0 rgba(255,255,255,.41),
+    289px 247px 0 0 rgba(255,255,255,.56),
+    413px 278px 0 0 rgba(255,255,255,.63),
+    538px 253px 0 0 rgba(255,255,255,.37),
+    667px 288px 0 0 rgba(255,255,255,.77),
+    792px 237px 0 0 rgba(255,255,255,.44),
+    917px 272px 0 0 rgba(255,255,255,.59),
+    1048px 249px 0 0 rgba(255,255,255,.48),
+    1178px 281px 0 0 rgba(255,255,255,.66),
+    1312px 258px 0 0 rgba(255,255,255,.39),
+    1430px 274px 0 0 rgba(255,255,255,.71),
+    /* row 5 */
+     74px 318px 0 0 rgba(255,255,255,.54),
+    198px 347px 0 0 rgba(255,255,255,.43),
+    323px 332px 0 0 rgba(255,255,255,.68),
+    459px 361px 0 0 rgba(255,255,255,.37),
+    584px 322px 0 0 rgba(255,255,255,.60),
+    714px 354px 0 0 rgba(255,255,255,.46),
+    841px 339px 0 0 rgba(255,255,255,.73),
+    968px 368px 0 0 rgba(255,255,255,.40),
+    1097px 328px 0 0 rgba(255,255,255,.57),
+    1224px 358px 0 0 rgba(255,255,255,.64),
+    1348px 343px 0 0 rgba(255,255,255,.35),
+    /* row 6 — slightly larger 2px stars, sparser */
+     143px  37px 1px 0 rgba(220,230,255,.55),
+    412px  58px 1px 0 rgba(220,230,255,.48),
+    735px  24px 1px 0 rgba(220,230,255,.62),
+    1067px  41px 1px 0 rgba(220,230,255,.44),
+    1289px  19px 1px 0 rgba(220,230,255,.57),
+    267px 148px 1px 0 rgba(220,230,255,.40),
+    589px 184px 1px 0 rgba(220,230,255,.53),
+    867px 131px 1px 0 rgba(220,230,255,.47),
+    1143px 162px 1px 0 rgba(220,230,255,.59),
+    1378px 149px 1px 0 rgba(220,230,255,.38),
+    102px 268px 1px 0 rgba(220,230,255,.50),
+    476px 299px 1px 0 rgba(220,230,255,.43),
+    802px 274px 1px 0 rgba(220,230,255,.61),
+    1056px 291px 1px 0 rgba(220,230,255,.36),
+    1332px 263px 1px 0 rgba(220,230,255,.55),
+     38px 374px 1px 0 rgba(220,230,255,.46),
+    321px 352px 1px 0 rgba(220,230,255,.52),
+    648px 388px 1px 0 rgba(220,230,255,.41),
+    934px 371px 1px 0 rgba(220,230,255,.63),
+    1198px 349px 1px 0 rgba(220,230,255,.44);
+}
+
+/* Bottom-of-page fog/mist overlay — fades from transparent to a faint blue-grey at
+   the very bottom of the viewport, like ground mist. Sits above the starfield but
+   below all content (z-index 0); pointer-events: none so it never intercepts clicks. */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 22vh;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    to top,
+    rgba(60, 80, 100, .18) 0%,
+    rgba(40, 58, 78, .10) 40%,
+    transparent 100%
+  );
 }
 .wrap { width: min(1160px, 100% - 2rem); margin-inline: auto; position: relative; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -54,11 +170,51 @@ section:focus { outline: none; }
 
 /* --- Night sky (decorative) ---------------------------------------------------- */
 .sky { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+
+/* Realistic moon: radial gradients for depth, pseudo-elements for craters. */
 .moon {
-  position: absolute; top: 70px; right: max(4vw, 24px); width: 120px; height: 120px; border-radius: 50%;
-  background: radial-gradient(circle at 38% 38%, #fbf6df 0%, #e8e0bb 45%, #bdb38a 100%);
-  box-shadow: 0 0 60px 18px rgba(251, 246, 223, .16), 0 0 160px 60px rgba(143, 240, 196, .06);
-  opacity: .85;
+  position: absolute; top: 70px; right: max(4vw, 24px); width: 120px; height: 120px;
+  border-radius: 50%;
+  /* Base sphere: highlight at upper-left, mid-grey body, darker limb/terminator */
+  background:
+    radial-gradient(circle at 32% 30%, #f0f4f8 0%, #d8dfe8 28%, #b8c2cc 58%, #8a97a4 80%, #6a7a88 100%);
+  /* Outer halo (cool blue-white glow) + subtle inner rim light */
+  box-shadow:
+    0 0 0 2px rgba(200, 215, 235, .12),
+    0 0 28px 8px  rgba(190, 210, 240, .22),
+    0 0 70px 24px rgba(170, 195, 230, .14),
+    0 0 140px 55px rgba(143, 240, 196, .06);
+  opacity: .92;
+  /* Subtle surface texture: a second radial for the terminator-side darkening */
+  isolation: isolate;
+}
+/* Crater layer 1 — large shallow basin, upper-left area */
+.moon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Several crater hints as radial-gradient stops; each is a soft dark ring */
+  background:
+    radial-gradient(circle at 42% 38%, rgba(80,90,100,.13) 0%, rgba(80,90,100,.13) 11%, transparent 13%),
+    radial-gradient(circle at 61% 55%, rgba(70,80,92,.10) 0%, rgba(70,80,92,.10)  8%, transparent 10%),
+    radial-gradient(circle at 28% 62%, rgba(60,70,80,.12) 0%, rgba(60,70,80,.12)  6%, transparent  8%),
+    radial-gradient(circle at 72% 32%, rgba(75,85,96,.09) 0%, rgba(75,85,96,.09)  5%, transparent  7%),
+    radial-gradient(circle at 50% 72%, rgba(65,75,88,.08) 0%, rgba(65,75,88,.08)  4%, transparent  6%),
+    radial-gradient(circle at 20% 34%, rgba(55,65,76,.11) 0%, rgba(55,65,76,.11)  7%, transparent  9%);
+}
+/* Crater layer 2 — highlights on the lit rim of each crater to sell the depth */
+.moon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 36%, rgba(240,245,255,.18) 0%, rgba(240,245,255,.18) 7%, transparent 9%),
+    radial-gradient(circle at 59% 53%, rgba(230,238,250,.14) 0%, rgba(230,238,250,.14) 5%, transparent 7%),
+    radial-gradient(circle at 26% 60%, rgba(235,242,252,.15) 0%, rgba(235,242,252,.15) 4%, transparent 6%),
+    /* Terminator edge: a subtle dark crescent on the right side */
+    radial-gradient(circle at 115% 50%, rgba(10,12,20,.45) 30%, transparent 58%);
 }
 /* Fog: tileable fractal noise (SVG feTurbulence, stitched), 1200 x 600 px. The filter
    region is exactly the tile and baseFrequency x tile size is a whole number (3), so
@@ -87,6 +243,15 @@ section:focus { outline: none; }
 .graves { position: absolute; bottom: 0; left: 0; width: 100%; height: max(130px, 13.9vw); pointer-events: none; }
 .graves-far { fill: #17142d; }
 .graves-near { fill: #030208; }
+/* Subtle float on the near-row gravestones when the footer is in view */
+.graves-near {
+  animation: grave-float 8s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes grave-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
 .ground-fog { position: absolute; left: 0; right: 0; bottom: 0; height: max(110px, 9vw); overflow: hidden; pointer-events: none; opacity: .75;
   -webkit-mask-image: linear-gradient(to top, #000 35%, transparent); mask-image: linear-gradient(to top, #000 35%, transparent); }
 .ground-fog::before { animation-duration: 45s; }
@@ -169,10 +334,11 @@ button.linkish { background: none; border: 0; padding: 0; color: var(--accent); 
 .code-pane pre { margin: 0; overflow-x: auto; font: 12.5px/1.55 var(--mono); }
 .code-pane code { background: none; padding: 0; font-size: 1em; overflow-wrap: normal; white-space: pre; }
 .dead-code { background: #0e0d1a; color: #8f8ba8; filter: grayscale(.4); }
-.dead-code .pane-label { color: #8f8ba8; }
+.dead-code { box-shadow: inset 0 0 40px rgba(180, 20, 20, .08); background: linear-gradient(135deg, rgba(180,20,20,.07) 0%, #0e0d1a 60%); border-color: rgba(220, 60, 60, .30); }
+.dead-code .pane-label { color: #d87a7a; font-size: .82rem; font-weight: 800; letter-spacing: .10em; text-shadow: 0 0 10px rgba(220,80,80,.35); }
 .dead-code del { text-decoration: line-through; text-decoration-color: var(--blood); color: var(--blood); }
-.alive-code { background: #0b1a16; color: #e2fff2; box-shadow: inset 0 0 30px rgba(143, 240, 196, .08); }
-.alive-code .pane-label { color: var(--accent); }
+.alive-code { background: linear-gradient(135deg, rgba(20,180,80,.08) 0%, #0b1a16 60%); color: #e2fff2; border-color: rgba(40, 200, 100, .30); box-shadow: inset 0 0 30px rgba(20, 180, 80, .08); }
+.alive-code .pane-label { color: var(--accent); font-size: .82rem; font-weight: 800; letter-spacing: .10em; text-shadow: 0 0 12px rgba(143,240,196,.45); }
 .alive-code ins { text-decoration: none; color: var(--accent); background: rgba(143, 240, 196, .12); border-radius: 4px; padding: 0 .15em; }
 .tomb-note { font-size: .88rem; color: var(--muted); margin: .8rem 0 0; }
 
@@ -261,6 +427,9 @@ dd { margin: 0; font-weight: 700; }
 .pill { flex: none; font-size: .75rem; padding: .05rem .5rem; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
 .pill.good { color: var(--good); } .pill.bad { color: var(--bad); } .pill.mute { color: var(--muted); }
 .diff-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .5rem; }
+/* Legacy label in the diff header gets a red accent; resurrected gets green */
+.diff-head .diff-label-legacy { color: #d87a7a; font-size: .82rem; font-weight: 800; letter-spacing: .08em; text-shadow: 0 0 10px rgba(220,80,80,.30); }
+.diff-head .diff-label-resurrected { color: var(--accent); font-size: .82rem; font-weight: 800; letter-spacing: .08em; text-shadow: 0 0 12px rgba(143,240,196,.35); }
 .diff-scroll { overflow: auto; max-height: 36rem; border: 1px solid var(--line); border-radius: 10px; }
 table.diff { border-collapse: collapse; width: 100%; table-layout: fixed; font: 12.5px/1.45 var(--mono); }
 .c-ln { width: 3.2rem; } .c-code { width: auto; }
@@ -320,6 +489,7 @@ table.diff tr.fold td { text-align: center; background: #0f1627; padding: .25rem
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition: none !important; }
   .revival .ghost-alive { opacity: 1; }
   .revival .ghost-dead { opacity: 0; }
+  .graves-near { animation: none; }
 }
 
 /* --- Footer ------------------------------------------------------------------------ */
@@ -334,6 +504,7 @@ table.diff tr.fold td { text-align: center; background: #0f1627; padding: .25rem
 @media (max-width: 560px) {
   .nav a:not(:last-child) { display: none; }
   .moon { display: none; }
+  .moon::before, .moon::after { display: none; }
 }
 
 /* Once an assessment or a result is on screen, it takes the place of the example,

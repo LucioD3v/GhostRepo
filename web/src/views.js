@@ -347,7 +347,7 @@ export function renderCodeTab(result) {
     if (!f) return;
     const original = sources.get(path);
     const out = outputs.get(path);
-    view.append(h('div', { class: 'diff-head' }, h('strong', { text: path }), h('span', { class: 'muted', text: out ? 'original ⟶ resurrected' : 'no changes made' })));
+    view.append(h('div', { class: 'diff-head' }, h('strong', { text: path }), h('span', { class: out ? 'diff-label-legacy' : 'muted', text: out ? '⬛ LEGACY' : 'no changes made' }), out ? h('span', { class: 'diff-label-resurrected', text: '👻 RESURRECTED' }) : null));
     if (original === undefined) {
       view.append(h('p', { class: 'muted' }, f.skipped.length ? f.skipped[0].reason : 'This file was not read.'));
       return;
