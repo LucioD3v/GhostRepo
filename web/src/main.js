@@ -27,6 +27,14 @@ const EXAMPLES = [
     url: 'https://github.com/LucioD3v/ghostrepo-gaia-calculator/tree/main/legacy',
   },
   {
+    label: '🎮 Mozilla game template (archived 2012)',
+    url: 'https://github.com/mozilla/mortar-game-stub',
+  },
+  {
+    label: '📱 Mozilla app template (archived)',
+    url: 'https://github.com/mozilla/mortar-app-stub',
+  },
+  {
     label: '🐍 A Python project (not supported)',
     url: 'https://github.com/psf/requests',
   },
