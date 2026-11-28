@@ -34,6 +34,9 @@ GhostRepo/
 │   │   ├── run-worker.js  #   Worker communication wrapper
 │   │   ├── views.js       #   DOM rendering functions (uses dom.js)
 │   │   ├── dom.js         #   h() hyperscript helper, clear()
+│   │   ├── i18n.js        #   EN/ES for the static page ([data-i18n]); <code>/<glow> become DOM nodes
+│   │   ├── lang.js        #   Runtime language: t()/tn() with English text as the key (no DOM)
+│   │   ├── lang-es.js     #   Spanish for every t() template; test/web-lang.test.js checks coverage
 │   │   ├── result.js      #   Result data helpers
 │   │   └── artifacts.js   #   Patch / report artifact builder
 │   └── shims/             #   Browser stubs for Node-only modules jscodeshift references

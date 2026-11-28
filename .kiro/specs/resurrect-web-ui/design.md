@@ -99,4 +99,4 @@ scripts/e2e-web.mjs              real Chrome against real GitHub (not part of np
 ## Verification
 
 - `npm test`: unit and parity tests for every web module, run against real `git apply` and `bsdtar` where relevant.
-- `npm run e2e:web`: 55 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases and a 360 px viewport.
+- `npm run e2e:web`: 62 checks in a real Chrome against the real GitHub API, including pressing the calculator keys in both previews, the isolation probe, the PR kit text, the not-supported verdict on a Python project, the error cases, switching to Spanish and back with a result on screen, and a 360 px viewport.

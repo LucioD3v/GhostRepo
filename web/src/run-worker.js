@@ -3,6 +3,7 @@
 // the worker, which stops even an engine call that is in the middle of a file.
 
 import { GitHubError } from './github.js';
+import { getLang, t } from './lang.js';
 
 export const WORKER_URL = './worker.js';
 
@@ -17,7 +18,7 @@ export function reviveError(data) {
     return new GitHubError(code, message, extra);
   }
   if (data && data.name === 'AbortError') return abortError();
-  return new Error(data && data.message ? data.message : 'The resurrection failed.');
+  return new Error(data && data.message ? data.message : t('The resurrection failed.'));
 }
 
 /**
@@ -58,8 +59,9 @@ export function runInWorker({ target, entries, onProgress = () => {}, signal, cr
     worker.onerror = (e) => {
       if (e && typeof e.preventDefault === 'function') e.preventDefault();
       finish();
-      reject(new Error(e && e.message ? e.message : 'The resurrection worker failed to start.'));
+      reject(new Error(e && e.message ? e.message : t('The resurrection worker failed to start.')));
     };
-    worker.postMessage({ type: 'run', target, entries });
+    // The worker has its own copy of lang.js: tell it which language its errors use.
+    worker.postMessage({ type: 'run', target, entries, lang: getLang() });
   });
 }

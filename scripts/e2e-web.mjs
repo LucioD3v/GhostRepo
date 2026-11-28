@@ -161,7 +161,7 @@ async function main() {
     await cdp.send('Page.navigate', { url: base });
     await waitFor(`document.readyState === 'complete' && !!document.getElementById('repo-url')`, 'page load');
     check('page title names GhostRepo', (await evalIn('document.title')).includes('GhostRepo'));
-    check('two examples are offered', (await evalIn(`document.querySelectorAll('#examples .chip').length`)) === 2);
+    check('four examples are offered', (await evalIn(`document.querySelectorAll('#examples .chip').length`)) === 4);
     await shot('01-idle');
 
     for (const [bad, why] of [['', 'empty'], ['http://github.com/o/r', 'http'], ['https://gitlab.com/o/r', 'other host'], ['https://github.com/o/r/blob/main/a.js', 'a file link']]) {
@@ -329,9 +329,24 @@ async function main() {
     check('the page says GhostRepo does not create the pull request', /does not create the pull request/.test(await text('#open-pr-help')), await text('#open-pr-help'));
     await shot('06-pr', '.tabs-card');
 
+    // --- 6b. Switching language with a result on screen ---------------------------------------------------
+    console.log('\n6b. Language switch (ES and back)');
+    await evalIn(`document.getElementById('btn-es').click(), true`);
+    check('the result redraws in Spanish', (await text('#result-title')) === 'Resucitado', await text('#result-title'));
+    check('the tabs are in Spanish',
+      (await evalIn(`[...document.querySelectorAll('[role=tab]')].map((b) => b.textContent).join('|')`)) === 'Código|Ejecutar|Descargar|Pull request');
+    check('the open tab is kept', (await evalIn(`document.querySelector('[role=tab][aria-selected=true]').dataset.tab`)) === 'pr');
+    check('the pull request kit itself stays in English', (await text('#tab-pr')) === 'Pull request' && (await evalIn(`!!document.querySelector('.pr-tab textarea') && document.querySelector('.pr-tab textarea').value.length > 0`)));
+    check('the headline keeps its glowing word', (await evalIn(`(document.querySelector('#hero-title .glow') || {}).textContent`)) === 'JavaScript');
+    check('the page language is es', (await evalIn('document.documentElement.lang')) === 'es');
+    await shot('06b-es', '#result');
+    await evalIn(`document.getElementById('btn-en').click(), true`);
+    check('back in English, glow intact',
+      (await text('#result-title')) === 'Resurrected' && (await evalIn(`!!document.querySelector('#hero-title .glow')`)) && (await evalIn('document.documentElement.lang')) === 'en');
+
     // --- 7. A repository that cannot be resurrected -------------------------------------------------------
     console.log('\n7. Not supported (Python project)');
-    await evalIn(`document.getElementById('examples').children[1].click(), true`);
+    await evalIn(`[...document.querySelectorAll('#examples .chip')].find((c) => c.textContent.includes('Python')).click(), true`);
     await waitFor(`!!document.getElementById('assessment') && document.getElementById('verdict-title').textContent.length > 0 && !document.querySelector('.busy')`, 'second assessment');
     const np = await text('#assessment');
     check('verdict: Not supported by this version', /Not supported by this version/.test(await text('#verdict-title')), await text('#verdict-title'));
