@@ -609,6 +609,15 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
   box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
 }
 
+/* The form and the hero tombstone have hard-coded dark backgrounds; in daylight they
+   become pale panels and sun-bleached stone so their dark text stays readable. */
+[data-theme='light'] .form {
+  background: rgba(255, 255, 255, .86);
+}
+[data-theme='light'] .tomb {
+  background: linear-gradient(180deg, #ebe6dc, #d8d1c3);
+}
+
 /* Code panes: light grey background. */
 [data-theme='light'] .code-pane,
 [data-theme='light'] .copy-block textarea,
@@ -647,24 +656,28 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
   display: none;
 }
 
-/* Sky-blue gradient fading into the warm page base, like looking up at noon. */
+/* The body keeps the warm page base; the sky gradient lives on the fixed .sky-day
+   layer, so it stays with the viewport (and the sun) instead of stretching over a
+   long results page. */
 [data-theme='light'] body {
-  background:
-    linear-gradient(
-      to bottom,
-      #87c4f0 0%,
-      #b8ddf8 18%,
-      #d8eefa 34%,
-      #f5f0e8 55%
-    );
+  background: var(--bg);
 }
 
+/* Sky-blue gradient fading into the warm page base, like looking up at noon. */
 [data-theme='light'] .sky-day {
   display: block;
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(
+    to bottom,
+    #87c4f0 0%,
+    #b8ddf8 18%,
+    #d8eefa 34%,
+    #f5f0e8 55%
+  );
 }
 
 /* Sun: warm yellow-white circle in the top-right, mirroring the moon position. */
@@ -777,24 +790,17 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
   top: -28px; left: 116px;
 }
 
-/* Each cloud starts at a different horizontal offset so they don't all enter together.
-   The travel distance is viewport-width + cloud-width, using a generous 110vw. */
-@keyframes cloud-drift-1 {
-  from { transform: translateX(calc(50vw + 220px)); }
-  to   { transform: translateX(calc(110vw + 220px)); }
-}
-@keyframes cloud-drift-2 {
-  from { transform: translateX(calc(20vw + 180px)); }
-  to   { transform: translateX(calc(110vw + 180px)); }
-}
-@keyframes cloud-drift-3 {
-  from { transform: translateX(calc(70vw + 150px)); }
-  to   { transform: translateX(calc(110vw + 150px)); }
-}
-@keyframes cloud-drift-4 {
-  from { transform: translateX(calc(10vw + 270px)); }
-  to   { transform: translateX(calc(110vw + 270px)); }
-}
+/* Each cloud crosses the whole viewport, from just off the left edge (its left:-width)
+   to just past the right edge, so a loop never pops a cloud into view mid-screen.
+   Negative delays start each one part-way through its trip, staggered. */
+@keyframes cloud-drift-1 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 440px)); } }
+@keyframes cloud-drift-2 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 360px)); } }
+@keyframes cloud-drift-3 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 300px)); } }
+@keyframes cloud-drift-4 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 540px)); } }
+.cloud-1 { animation-delay: -60s; }
+.cloud-2 { animation-delay: -22s; }
+.cloud-3 { animation-delay: -48s; }
+.cloud-4 { animation-delay: -10s; }
 
 /* Clouds are still visible but stationary when motion is reduced. */
 @media (prefers-reduced-motion: reduce) {
