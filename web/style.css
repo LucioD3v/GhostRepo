@@ -321,8 +321,8 @@ button.linkish { background: none; border: 0; padding: 0; color: var(--accent); 
 .summon { padding-inline: 1.4rem; }
 
 .examples { margin-top: .9rem; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
-.chips { display: flex; gap: .5rem; flex-wrap: wrap; }
-.chip { padding: .4rem .85rem; border-radius: 999px; font-weight: 600; font-size: .9rem; background: var(--panel); flex: 0 1 auto; }
+.chips { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.chip { padding: .4rem .85rem; border-radius: 999px; font-weight: 600; font-size: .9rem; background: var(--panel); text-align: center; }
 
 /* Before / after "tombstone" */
 .tomb { margin: 0; min-width: 0; padding: 1.1rem; border-radius: 28px 28px var(--radius) var(--radius); background: linear-gradient(180deg, #1b1934, #121126);
