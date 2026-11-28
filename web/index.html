@@ -34,9 +34,12 @@
           GhostRepo
         </a>
         <nav class="nav" aria-label="Sections">
-          <a href="#ritual">How it works</a>
-          <a href="#scope">What it can raise</a>
-          <a href="https://github.com/LucioD3v/GhostRepo" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+          <a href="#ritual" data-i18n="nav.howItWorks">How it works</a>
+          <a href="#scope" data-i18n="nav.whatItCanRaise">What it can raise</a>
+          <a href="https://github.com/LucioD3v/GhostRepo" target="_blank" rel="noopener noreferrer" data-i18n="nav.sourceOnGitHub">Source on GitHub</a>
+          <button type="button" class="lang-btn" id="btn-en" aria-pressed="true" onclick="">EN</button>
+          <button type="button" class="lang-btn" id="btn-es" aria-pressed="false" onclick="">ES</button>
+          <button type="button" id="theme-toggle" aria-label="Toggle light/dark theme">🌙</button>
         </nav>
       </div>
     </header>
@@ -45,43 +48,43 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="kicker"><span aria-hidden="true">🎃</span> Built with Kiro for Kiroween · Resurrection</p>
-          <h1 id="hero-title">Raise your dead <span class="glow">JavaScript</span> from the grave.</h1>
-          <p class="lead">
+          <h1 id="hero-title" data-i18n="hero.headline">Raise your dead <span class="glow">JavaScript</span> from the grave.</h1>
+          <p class="lead" data-i18n="hero.lead">
             Paste a GitHub link to an abandoned web app. GhostRepo checks whether it can rise, rewrites legacy
             patterns with codemods that only touch what is provably safe, and runs the original and the
             resurrected app side by side.
           </p>
           <ul class="scope-pills" aria-label="What GhostRepo revives">
-            <li>JavaScript</li>
-            <li>HTML pages and their scripts</li>
-            <li>ES5 and jQuery-era web apps</li>
+            <li data-i18n="hero.pill1">JavaScript</li>
+            <li data-i18n="hero.pill2">HTML pages and their scripts</li>
+            <li data-i18n="hero.pill3">ES5 and jQuery-era web apps</li>
           </ul>
-          <p class="not-java">JavaScript, not Java: they are different languages. Repositories in other languages are detected and you are told why before any work is done.</p>
+          <p class="not-java" data-i18n="hero.notJava">JavaScript, not Java: they are different languages. Repositories in other languages are detected and you are told why before any work is done.</p>
 
           <form id="repo-form" class="form" novalidate>
-            <label for="repo-url">Link to a dead GitHub repository</label>
+            <label for="repo-url" data-i18n="form.label">Link to a dead GitHub repository</label>
             <div class="row">
-              <input id="repo-url" name="repo" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo" aria-describedby="form-message form-hint" aria-invalid="false" />
-              <button id="analyze-btn" class="primary summon" type="submit"><span aria-hidden="true">👻</span> Analyze</button>
+              <input id="repo-url" name="repo" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://github.com/owner/repo" aria-describedby="form-message form-hint" aria-invalid="false" data-i18n-placeholder="form.placeholder" />
+              <button id="analyze-btn" class="primary summon" type="submit"><span aria-hidden="true">👻</span> <span data-i18n="form.analyze">Analyze</span></button>
             </div>
-            <p id="form-hint" class="hint">Public repositories only. Nothing is downloaded or run until you say so.</p>
+            <p id="form-hint" class="hint" data-i18n="form.hint">Public repositories only. Nothing is downloaded or run until you say so.</p>
             <details class="more">
-              <summary>Only one folder of the repository?</summary>
-              <label for="repo-folder">Subfolder</label>
+              <summary data-i18n="form.subfolderSummary">Only one folder of the repository?</summary>
+              <label for="repo-folder" data-i18n="form.subfolderLabel">Subfolder</label>
               <input id="repo-folder" name="folder" type="text" autocomplete="off" spellcheck="false" placeholder="apps/calculator" />
             </details>
             <p id="form-message" class="form-error" role="alert" hidden></p>
           </form>
 
           <div class="examples">
-            <span class="muted">Try one:</span>
+            <span class="muted" data-i18n="form.tryOne">Try one:</span>
             <span id="examples" class="chips"></span>
           </div>
         </div>
 
         <!-- Real engine output for this snippet (src/engine.js), not a mock-up. -->
         <figure class="tomb" aria-labelledby="tomb-cap">
-          <figcaption id="tomb-cap" class="tomb-cap">What a resurrection looks like</figcaption>
+          <figcaption id="tomb-cap" class="tomb-cap" data-i18n="tomb.caption">What a resurrection looks like</figcaption>
           <div class="code-pane dead-code">
             <p class="pane-label"><span aria-hidden="true">🪦</span> Legacy</p>
 <pre><code>function showTotal(el, items) {
@@ -104,7 +107,7 @@
   return label;
 }</code></pre>
           </div>
-          <p class="tomb-note">Same behavior, modern syntax. Anything that cannot be proven safe is left as it was and listed with the reason.</p>
+          <p class="tomb-note" data-i18n="tomb.note">Same behavior, modern syntax. Anything that cannot be proven safe is left as it was and listed with the reason.</p>
         </figure>
       </section>
 
@@ -113,59 +116,59 @@
       <noscript><p class="card">GhostRepo runs in your browser and needs JavaScript enabled.</p></noscript>
 
       <section id="ritual" class="ritual" aria-labelledby="ritual-title">
-        <h2 id="ritual-title">The ritual, in four phases</h2>
+        <h2 id="ritual-title" data-i18n="ritual.title">The ritual, in four phases</h2>
         <ol class="phase-cards">
           <li>
             <span class="phase-icon" aria-hidden="true">🔮</span>
-            <h3>Necromancy</h3>
-            <p>Reads the repository from GitHub and finds every JavaScript file worth reviving. Python, Java or PHP projects are told so here, before anything else happens.</p>
+            <h3 data-i18n="ritual.phase1.name">Necromancy</h3>
+            <p data-i18n="ritual.phase1.desc">Reads the repository from GitHub and finds every JavaScript file worth reviving. Python, Java or PHP projects are told so here, before anything else happens.</p>
           </li>
           <li>
             <span class="phase-icon" aria-hidden="true">✝️</span>
-            <h3>Exorcism</h3>
-            <p>Replaces <code>innerHTML = 'plain text'</code> with <code>textContent</code>. Dynamic HTML is flagged for a human, never rewritten blindly.</p>
+            <h3 data-i18n="ritual.phase2.name">Exorcism</h3>
+            <p data-i18n="ritual.phase2.desc">Replaces <code>innerHTML = 'plain text'</code> with <code>textContent</code>. Dynamic HTML is flagged for a human, never rewritten blindly.</p>
           </li>
           <li>
             <span class="phase-icon" aria-hidden="true">⚗️</span>
-            <h3>Transmutation</h3>
-            <p>Turns <code>var</code> into <code>const</code> or <code>let</code>, and <code>==</code> into <code>===</code> when both sides are known to have the same type.</p>
+            <h3 data-i18n="ritual.phase3.name">Transmutation</h3>
+            <p data-i18n="ritual.phase3.desc">Turns <code>var</code> into <code>const</code> or <code>let</code>, and <code>==</code> into <code>===</code> when both sides are known to have the same type.</p>
           </li>
           <li>
             <span class="phase-icon" aria-hidden="true">👻</span>
-            <h3>Resurrection</h3>
-            <p>Shows every change next to the original, runs both versions, and gives you a patch and a ready-to-paste pull request.</p>
+            <h3 data-i18n="ritual.phase4.name">Resurrection</h3>
+            <p data-i18n="ritual.phase4.desc">Shows every change next to the original, runs both versions, and gives you a patch and a ready-to-paste pull request.</p>
           </li>
         </ol>
       </section>
 
       <section id="scope" class="scope" aria-labelledby="scope-title">
-        <h2 id="scope-title">What it can raise</h2>
+        <h2 id="scope-title" data-i18n="scope.title">What it can raise</h2>
         <div class="scope-grid">
           <div class="scope-card yes">
-            <h3><span aria-hidden="true">✅</span> Rises today</h3>
+            <h3><span aria-hidden="true">✅</span> <span data-i18n="scope.yes.title">Rises today</span></h3>
             <ul>
-              <li>JavaScript web apps: <code>.js</code> files and the HTML pages that load them</li>
-              <li>ES5 code, jQuery-era sites, old browser and Firefox OS apps</li>
-              <li>A whole repository, or just one folder of it</li>
+              <li data-i18n="scope.yes.item1">JavaScript web apps: <code>.js</code> files and the HTML pages that load them</li>
+              <li data-i18n="scope.yes.item2">ES5 code, jQuery-era sites, old browser and Firefox OS apps</li>
+              <li data-i18n="scope.yes.item3">A whole repository, or just one folder of it</li>
             </ul>
           </div>
           <div class="scope-card no">
-            <h3><span aria-hidden="true">🪦</span> Stays buried, for now</h3>
+            <h3><span aria-hidden="true">🪦</span> <span data-i18n="scope.no.title">Stays buried, for now</span></h3>
             <ul>
-              <li>Java, Python, PHP, C#, Ruby and other languages: detected and explained, not modified</li>
-              <li>Private repositories</li>
-              <li>Running the repository's own tests</li>
+              <li data-i18n="scope.no.item1">Java, Python, PHP, C#, Ruby and other languages: detected and explained, not modified</li>
+              <li data-i18n="scope.no.item2">Private repositories</li>
+              <li data-i18n="scope.no.item3">Running the repository's own tests</li>
             </ul>
           </div>
         </div>
       </section>
 
       <section class="vow" aria-labelledby="vow-title">
-        <h2 id="vow-title">The Zero Breaking Logic vow</h2>
+        <h2 id="vow-title" data-i18n="vow.title">The Zero Breaking Logic vow</h2>
         <div class="vow-grid">
-          <p><strong>Provably safe or untouched.</strong> A rewrite is applied only when the syntax proves the behavior stays the same.</p>
-          <p><strong>Nothing hidden.</strong> Every skipped site is listed with its reason and line.</p>
-          <p><strong>Measured, not guessed.</strong> Every number comes from the actual code before and after.</p>
+          <p><strong data-i18n="vow.item1.title">Provably safe or untouched.</strong> <span data-i18n="vow.item1.desc">A rewrite is applied only when the syntax proves the behavior stays the same.</span></p>
+          <p><strong data-i18n="vow.item2.title">Nothing hidden.</strong> <span data-i18n="vow.item2.desc">Every skipped site is listed with its reason and line.</span></p>
+          <p><strong data-i18n="vow.item3.title">Measured, not guessed.</strong> <span data-i18n="vow.item3.desc">Every number comes from the actual code before and after.</span></p>
         </div>
       </section>
     </main>
@@ -198,12 +201,12 @@
       </svg>
       <div class="ground-fog" aria-hidden="true"></div>
       <div class="wrap">
-        <p>
+        <p data-i18n="footer.privacy">
           Everything runs in your browser; no code is sent to any server of ours. Public GitHub repositories only.
           GhostRepo does not run a repository's own tests, so review the diff before you merge anything.
         </p>
-        <p class="credits">Developed by <strong>Vicente Guzmán</strong>.</p>
-        <p class="muted">GhostRepo · MIT License · Built with Kiro for the Kiroween hackathon.</p>
+        <p class="credits">Developed by <strong>Vicente G. Guzmán L.</strong></p>
+        <p class="muted" data-i18n="footer.license">GhostRepo · MIT License · Built with Kiro for the Kiroween hackathon.</p>
       </div>
     </footer>
 

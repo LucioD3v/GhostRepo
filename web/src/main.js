@@ -6,6 +6,7 @@ import { parseRepoInput } from './github-url.js';
 import { createGitHubClient, GitHubError } from './github.js';
 import { assessListing } from './assess.js';
 import { runInWorker } from './run-worker.js';
+import { applyLang } from './i18n.js';
 import {
   renderAssessment,
   renderProgress,
@@ -263,6 +264,38 @@ els.url.addEventListener('input', () => formError(''));
 for (const ex of EXAMPLES) {
   els.examples.append(h('button', { type: 'button', class: 'chip', onclick: () => useExample(ex) }, ex.label));
 }
+
+// --- Language toggle ----------------------------------------------------------------
+
+for (const btn of document.querySelectorAll('.lang-btn')) {
+  btn.addEventListener('click', () => {
+    const lang = btn.id === 'btn-es' ? 'es' : 'en';
+    applyLang(lang);
+  });
+}
+
+// --- Theme toggle -------------------------------------------------------------------
+
+const themeBtn = document.getElementById('theme-toggle');
+
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeBtn.textContent = '☀️';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeBtn.textContent = '🌙';
+  }
+  localStorage.setItem('theme', theme);
+}
+
+// Restore saved theme on load.
+applyTheme(localStorage.getItem('theme') || 'dark');
+
+themeBtn.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'light' ? 'dark' : 'light');
+});
 
 // A shared link (?repo=...) fills the form and runs the assessment, never the resurrection.
 const initial = new URLSearchParams(location.search).get('repo');
