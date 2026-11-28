@@ -1,6 +1,12 @@
 // GhostRepo · i18n — static UI translations (EN / ES).
-// Only translates static HTML strings marked with data-i18n.
-// Dynamic strings rendered by views.js are out of scope.
+// Translates the static HTML strings marked with data-i18n. The views that main.js
+// builds at runtime are translated by lang.js; applyLang switches both.
+//
+// A string may mark inline code as <code>…</code> and the glowing word of the
+// headline as <glow>…</glow>. Those become DOM nodes (never innerHTML), so
+// switching language keeps the formatting the page was written with.
+
+import { setLang } from './lang.js';
 
 export const translations = {
   en: {
@@ -8,7 +14,7 @@ export const translations = {
     'nav.whatItCanRaise': 'What it can raise',
     'nav.sourceOnGitHub': 'Source on GitHub',
 
-    'hero.headline': 'Raise your dead JavaScript from the grave.',
+    'hero.headline': 'Raise your dead <glow>JavaScript</glow> from the grave.',
     'hero.lead':
       'Paste a GitHub link to an abandoned web app. GhostRepo checks whether it can rise, rewrites legacy patterns with codemods that only touch what is provably safe, and runs the original and the resurrected app side by side.',
     'hero.pill1': 'JavaScript',
@@ -35,17 +41,17 @@ export const translations = {
       'Reads the repository from GitHub and finds every JavaScript file worth reviving. Python, Java or PHP projects are told so here, before anything else happens.',
     'ritual.phase2.name': 'Exorcism',
     'ritual.phase2.desc':
-      "Replaces innerHTML = 'plain text' with textContent. Dynamic HTML is flagged for a human, never rewritten blindly.",
+      "Replaces <code>innerHTML = 'plain text'</code> with <code>textContent</code>. Dynamic HTML is flagged for a human, never rewritten blindly.",
     'ritual.phase3.name': 'Transmutation',
     'ritual.phase3.desc':
-      "Turns var into const or let, and == into === when both sides are known to have the same type.",
+      'Turns <code>var</code> into <code>const</code> or <code>let</code>, and <code>==</code> into <code>===</code> when both sides are known to have the same type.',
     'ritual.phase4.name': 'Resurrection',
     'ritual.phase4.desc':
       'Shows every change next to the original, runs both versions, and gives you a patch and a ready-to-paste pull request.',
 
     'scope.title': 'What it can raise',
     'scope.yes.title': 'Rises today',
-    'scope.yes.item1': 'JavaScript web apps: .js files and the HTML pages that load them',
+    'scope.yes.item1': 'JavaScript web apps: <code>.js</code> files and the HTML pages that load them',
     'scope.yes.item2': 'ES5 code, jQuery-era sites, old browser and Firefox OS apps',
     'scope.yes.item3': 'A whole repository, or just one folder of it',
     'scope.no.title': 'Stays buried, for now',
@@ -71,9 +77,9 @@ export const translations = {
     'nav.whatItCanRaise': 'Qué puede revivir',
     'nav.sourceOnGitHub': 'Código en GitHub',
 
-    'hero.headline': 'Levanta tu JavaScript muerto de la tumba.',
+    'hero.headline': 'Levanta tu <glow>JavaScript</glow> muerto de la tumba.',
     'hero.lead':
-      'Pega un enlace de GitHub a una web app abandonada. GhostRepo comprueba si puede resucitar, reescribe patrones heredados con codemods que solo tocan lo que es demostablemente seguro, y ejecuta la app original y la resucitada una al lado de la otra.',
+      'Pega un enlace de GitHub a una web app abandonada. GhostRepo comprueba si puede resucitar, reescribe patrones heredados con codemods que solo tocan lo que es demostrablemente seguro, y ejecuta la app original y la resucitada una al lado de la otra.',
     'hero.pill1': 'JavaScript',
     'hero.pill2': 'Páginas HTML y sus scripts',
     'hero.pill3': 'Web apps de la era ES5 y jQuery',
@@ -98,17 +104,17 @@ export const translations = {
       'Lee el repositorio de GitHub y encuentra cada archivo JavaScript que vale la pena revivir. Los proyectos en Python, Java o PHP son notificados aquí, antes de que ocurra cualquier otra cosa.',
     'ritual.phase2.name': 'Exorcismo',
     'ritual.phase2.desc':
-      "Reemplaza innerHTML = 'texto plano' por textContent. El HTML dinámico se marca para revisión humana, nunca se reescribe a ciegas.",
+      "Reemplaza <code>innerHTML = 'texto plano'</code> por <code>textContent</code>. El HTML dinámico se marca para revisión humana, nunca se reescribe a ciegas.",
     'ritual.phase3.name': 'Transmutación',
     'ritual.phase3.desc':
-      "Convierte var en const o let, y == en === cuando se sabe que ambos lados tienen el mismo tipo.",
+      'Convierte <code>var</code> en <code>const</code> o <code>let</code>, y <code>==</code> en <code>===</code> cuando se sabe que ambos lados tienen el mismo tipo.',
     'ritual.phase4.name': 'Resurrección',
     'ritual.phase4.desc':
       'Muestra cada cambio junto al original, ejecuta ambas versiones y te entrega un parche y un pull request listo para pegar.',
 
     'scope.title': 'Qué puede revivir',
     'scope.yes.title': 'Resucita hoy',
-    'scope.yes.item1': 'Web apps en JavaScript: archivos .js y las páginas HTML que los cargan',
+    'scope.yes.item1': 'Web apps en JavaScript: archivos <code>.js</code> y las páginas HTML que los cargan',
     'scope.yes.item2': 'Código ES5, sitios de la era jQuery, apps antiguas de navegador y Firefox OS',
     'scope.yes.item3': 'Un repositorio completo, o solo una carpeta de él',
     'scope.no.title': 'Se queda enterrado, por ahora',
@@ -117,7 +123,7 @@ export const translations = {
     'scope.no.item3': 'Ejecutar las pruebas propias del repositorio',
 
     'vow.title': 'El voto Zero Breaking Logic',
-    'vow.item1.title': 'Demostablemente seguro o sin tocar.',
+    'vow.item1.title': 'Demostrablemente seguro o sin tocar.',
     'vow.item1.desc': 'Una reescritura solo se aplica cuando la sintaxis demuestra que el comportamiento se mantiene igual.',
     'vow.item2.title': 'Nada oculto.',
     'vow.item2.desc': 'Cada sitio omitido se lista con su motivo y número de línea.',
@@ -129,6 +135,23 @@ export const translations = {
     'footer.license': 'GhostRepo \u00b7 Licencia MIT \u00b7 Creado con Kiro para el hackathon Kiroween.',
   },
 };
+
+const INLINE = /<(code|glow)>([^<]*)<\/\1>/g;
+
+/** Fill el with text, turning <code>…</code> and <glow>…</glow> into elements. */
+function setRichText(el, text) {
+  el.textContent = '';
+  let last = 0;
+  for (const m of text.matchAll(INLINE)) {
+    if (m.index > last) el.append(text.slice(last, m.index));
+    const node = document.createElement(m[1] === 'code' ? 'code' : 'span');
+    if (m[1] === 'glow') node.className = 'glow';
+    node.textContent = m[2];
+    el.append(node);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) el.append(text.slice(last));
+}
 
 /**
  * Apply the given language to all [data-i18n] elements on the page.
@@ -144,7 +167,7 @@ export function applyLang(lang) {
   for (const el of document.querySelectorAll('[data-i18n]')) {
     const key = el.getAttribute('data-i18n');
     if (key && dict[key] != null) {
-      el.textContent = dict[key];
+      setRichText(el, dict[key]);
     }
   }
 
@@ -161,8 +184,21 @@ export function applyLang(lang) {
     btn.setAttribute('aria-pressed', btn.id === `btn-${lang}` ? 'true' : 'false');
   }
 
-  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang === 'es' ? 'es' : 'en';
+  try {
+    localStorage.setItem('lang', lang);
+  } catch {
+    /* storage blocked: the choice lasts for this page only */
+  }
+  // Last, so the runtime views redraw after the static page is translated.
+  setLang(lang);
 }
 
 // Apply saved (or default) language immediately on module load.
-applyLang(localStorage.getItem('lang') || 'en');
+let saved = null;
+try {
+  saved = localStorage.getItem('lang');
+} catch {
+  /* storage blocked */
+}
+applyLang(saved === 'es' ? 'es' : 'en');

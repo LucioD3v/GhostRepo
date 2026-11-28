@@ -5,6 +5,7 @@
 // cannot promise files the run will not read.
 
 import { isEligibleJsPath, SKIP_DIRS } from '../../src/files.js';
+import { t, tn } from './lang.js';
 
 // Documented limits (requirement 11.2). A run fetches every file of the scanned
 // root except node_modules/ and .git/, so these bound what is downloaded.
@@ -120,7 +121,7 @@ export function assessListing({ entries, truncated = false, limits = LIMITS }) {
     return {
       ...base,
       verdict: 'TOO_LARGE',
-      headline: 'Too large to analyze as a whole',
+      headline: t('Too large to analyze as a whole'),
       details: tooLargeDetails({ truncated, totalFiles, totalBytes, limits }),
       suggestions: suggestFolders(eligible),
     };
@@ -131,7 +132,7 @@ export function assessListing({ entries, truncated = false, limits = LIMITS }) {
     return {
       ...base,
       verdict: 'NOT_SUPPORTED',
-      headline: 'Not supported by this version',
+      headline: t('Not supported by this version'),
       details: notSupportedDetails(detected, excluded),
       detected,
     };
@@ -139,38 +140,38 @@ export function assessListing({ entries, truncated = false, limits = LIMITS }) {
 
   const others = languages.filter((l) => l.name !== 'JavaScript' && !NEAR_JS.has(l.name));
   const details = [
-    `${eligible.length} JavaScript file${eligible.length === 1 ? '' : 's'} will be analyzed.`,
+    tn('{n} JavaScript file will be analyzed.', '{n} JavaScript files will be analyzed.', eligible.length),
   ];
   if (entryPoint) {
-    details.push('A web entry point (index.html) was found: the live run will be available.');
+    details.push(t('A web entry point (index.html) was found: the live run will be available.'));
   } else {
     details.push(
-      'No index.html in the selected folder: the diff, the download and the pull request kit will be available, but not the live run.',
+      t('No index.html in the selected folder: the diff, the download and the pull request kit will be available, but not the live run.'),
     );
     const nested = nestedEntryFolders(fetchable);
     if (nested.length > 0) {
-      details.push(`An index.html exists in ${nested.join(', ')}. Select that folder to get the live run.`);
+      details.push(t('An index.html exists in {folders}. Select that folder to get the live run.', { folders: nested.join(', ') }));
     }
   }
   if (others.length > 0) {
     details.push(
-      `Files in other languages (${others.map((l) => `${l.name}: ${l.files}`).join(', ')}) will be left untouched.`,
+      t('Files in other languages ({list}) will be left untouched.', { list: others.map((l) => `${l.name}: ${l.files}`).join(', ') }),
     );
   }
   const nearJs = languages.filter((l) => NEAR_JS.has(l.name));
   if (nearJs.length > 0) {
     details.push(
-      `${nearJs.map((l) => `${l.name} (${l.files})`).join(', ')} are not processed by this version.`,
+      t('{list} are not processed by this version.', { list: nearJs.map((l) => `${l.name} (${l.files})`).join(', ') }),
     );
   }
   details.push(
-    'This means the repository can be analyzed. The run may still end with no changes if nothing can be changed provably safely.',
+    t('This means the repository can be analyzed. The run may still end with no changes if nothing can be changed provably safely.'),
   );
 
   return {
     ...base,
     verdict: entryPoint ? 'READY' : 'READY_NO_PREVIEW',
-    headline: entryPoint ? 'Can be resurrected' : 'Can be resurrected, without live run',
+    headline: entryPoint ? t('Can be resurrected') : t('Can be resurrected, without live run'),
     details,
   };
 }
@@ -193,20 +194,27 @@ function detectLanguage(languages) {
 }
 
 function notSupportedDetails(detected, excluded) {
-  const details = ['GhostRepo v1 modernizes only JavaScript/web code.'];
+  const details = [t('GhostRepo v1 modernizes only JavaScript/web code.')];
   if (detected) {
     details.push(
-      `This repository looks ${detected.mostly ? 'mostly like' : 'to include'} ${detected.name}: ` +
-        `${detected.files} file${detected.files === 1 ? '' : 's'} with ${detected.name} extensions ` +
-        '(detected from file extensions), and 0 eligible .js files.',
+      tn(
+        detected.mostly
+          ? 'This repository looks mostly like {lang}: {n} file with {lang} extensions (detected from file extensions), and 0 eligible .js files.'
+          : 'This repository looks to include {lang}: {n} file with {lang} extensions (detected from file extensions), and 0 eligible .js files.',
+        detected.mostly
+          ? 'This repository looks mostly like {lang}: {n} files with {lang} extensions (detected from file extensions), and 0 eligible .js files.'
+          : 'This repository looks to include {lang}: {n} files with {lang} extensions (detected from file extensions), and 0 eligible .js files.',
+        detected.files,
+        { lang: detected.name },
+      ),
     );
   } else {
-    details.push('No eligible .js files were found.');
+    details.push(t('No eligible .js files were found.'));
   }
   const skipped = [];
-  if (excluded.minified > 0) skipped.push(`${excluded.minified} minified (.min.js)`);
-  if (excluded.vendored > 0) skipped.push(`${excluded.vendored} inside node_modules/ or .git/`);
-  if (skipped.length > 0) details.push(`.js files that are excluded on purpose: ${skipped.join(', ')}.`);
+  if (excluded.minified > 0) skipped.push(t('{n} minified (.min.js)', { n: excluded.minified }));
+  if (excluded.vendored > 0) skipped.push(t('{n} inside node_modules/ or .git/', { n: excluded.vendored }));
+  if (skipped.length > 0) details.push(t('.js files that are excluded on purpose: {list}.', { list: skipped.join(', ') }));
   return details;
 }
 
@@ -214,13 +222,13 @@ function tooLargeDetails({ truncated, totalFiles, totalBytes, limits }) {
   const mb = (n) => (n / (1024 * 1024)).toFixed(1);
   const details = [];
   if (truncated) {
-    details.push('GitHub returned only a partial file listing for this repository, so it cannot be assessed as a whole.');
+    details.push(t('GitHub returned only a partial file listing for this repository, so it cannot be assessed as a whole.'));
   } else {
     details.push(
-      `It has ${totalFiles} files (${mb(totalBytes)} MB); the limit is ${limits.maxFiles} files and ${mb(limits.maxBytes)} MB.`,
+      t('It has {files} files ({mb} MB); the limit is {maxFiles} files and {maxMb} MB.', { files: totalFiles, mb: mb(totalBytes), maxFiles: limits.maxFiles, maxMb: mb(limits.maxBytes) }),
     );
   }
-  details.push('Select a subfolder to analyze only that part of the repository.');
+  details.push(t('Select a subfolder to analyze only that part of the repository.'));
   return details;
 }
 

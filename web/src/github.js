@@ -2,6 +2,8 @@
 // listing, raw.githubusercontent.com for file contents. Anonymous, public repos
 // only. `fetch` is injected so the client is testable without a network.
 
+import { t } from './lang.js';
+
 const API = 'https://api.github.com';
 const RAW = 'https://raw.githubusercontent.com';
 
@@ -19,7 +21,7 @@ const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
 function formatReset(epochSeconds) {
   if (!epochSeconds) return '';
   const d = new Date(Number(epochSeconds) * 1000);
-  return Number.isNaN(d.getTime()) ? '' : ` Try again after ${d.toLocaleTimeString()}.`;
+  return Number.isNaN(d.getTime()) ? '' : t(' Try again after {time}.', { time: d.toLocaleTimeString() });
 }
 
 /**
@@ -35,14 +37,14 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
       res = await fetchImpl(url, { signal, headers: accept ? { Accept: accept } : undefined });
     } catch (e) {
       if (e && e.name === 'AbortError') throw e;
-      throw new GitHubError('network', 'Could not reach GitHub. Check your connection and try again.');
+      throw new GitHubError('network', t('Could not reach GitHub. Check your connection and try again.'));
     }
     if (res.status === 403 || res.status === 429) {
       const remaining = res.headers.get('x-ratelimit-remaining');
       if (remaining === '0' || res.status === 429) {
         throw new GitHubError(
           'rate-limited',
-          `GitHub's limit for anonymous requests was reached.${formatReset(res.headers.get('x-ratelimit-reset'))}`,
+          t("GitHub's limit for anonymous requests was reached.") + formatReset(res.headers.get('x-ratelimit-reset')),
         );
       }
     }
@@ -57,7 +59,7 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
   const notFound = (owner, repo) =>
     new GitHubError(
       'not-found-or-private',
-      `${owner}/${repo} was not found. It may not exist or it may be private (GitHub does not distinguish the two without a login, and only public repositories are supported).`,
+      t('{name} was not found. It may not exist or it may be private (GitHub does not distinguish the two without a login, and only public repositories are supported).', { name: `${owner}/${repo}` }),
     );
 
   return {
@@ -75,7 +77,7 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
         };
       }
       if (r.status === 404) throw notFound(owner, repo);
-      throw new GitHubError('http', `GitHub answered with an unexpected status ${r.status}.`);
+      throw new GitHubError('http', t('GitHub answered with an unexpected status {status}.', { status: r.status }));
     },
 
     /**
@@ -94,7 +96,7 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
         };
       }
       if (r.status === 409) {
-        throw new GitHubError('empty-repo', 'That repository is empty: it has no commits.');
+        throw new GitHubError('empty-repo', t('That repository is empty: it has no commits.'));
       }
       if (r.status === 404 || r.status === 422) {
         if (ref) {
@@ -104,13 +106,13 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
             // A /tree/ link is split at the first "/", so "release/1.x" arrives as "release".
             throw new GitHubError(
               'ref-not-found',
-              `The branch or tag "${ref}" does not exist in ${owner}/${repo}. Links to branches whose name contains "/" are not supported yet.`,
+              t('The branch or tag "{ref}" does not exist in {name}. Links to branches whose name contains "/" are not supported yet.', { ref, name: `${owner}/${repo}` }),
             );
           }
         }
         throw notFound(owner, repo);
       }
-      throw new GitHubError('http', `GitHub answered with an unexpected status ${r.status}.`);
+      throw new GitHubError('http', t('GitHub answered with an unexpected status {status}.', { status: r.status }));
     },
 
     /**
@@ -131,11 +133,11 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
         throw new GitHubError(
           'path-not-found',
           subfolder
-            ? `The folder "${subfolder}" was not found in ${owner}/${repo} at that branch.`
-            : `The file listing of ${owner}/${repo} was not found.`,
+            ? t('The folder "{folder}" was not found in {name} at that branch.', { folder: subfolder, name: `${owner}/${repo}` })
+            : t('The file listing of {name} was not found.', { name: `${owner}/${repo}` }),
         );
       }
-      throw new GitHubError('http', `GitHub answered with an unexpected status ${r.status}.`);
+      throw new GitHubError('http', t('GitHub answered with an unexpected status {status}.', { status: r.status }));
     },
 
     /** Download one file as bytes. `path` is relative to `subfolder`. */
@@ -143,7 +145,7 @@ export function createGitHubClient({ fetch: fetchImpl = globalThis.fetch, api = 
       const full = subfolder ? `${subfolder}/${path}` : path;
       const res = await request(`${raw}/${owner}/${repo}/${sha}/${encodePath(full)}`, opts);
       if (!res.ok) {
-        throw new GitHubError('file-failed', `Could not download ${full} (status ${res.status}).`, { path: full });
+        throw new GitHubError('file-failed', t('Could not download {path} (status {status}).', { path: full, status: res.status }), { path: full });
       }
       return new Uint8Array(await res.arrayBuffer());
     },

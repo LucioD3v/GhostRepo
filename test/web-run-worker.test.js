@@ -46,7 +46,8 @@ test('progress is forwarded, the result resolves and the worker is terminated', 
     },
   });
   assert.equal(worker.url, WORKER_URL);
-  assert.deepEqual(worker.posted, [{ type: 'run', ...input }]);
+  // The worker gets the page's language, so the errors it reports match the page.
+  assert.deepEqual(worker.posted, [{ type: 'run', ...input, lang: 'en' }]);
   assert.deepEqual(events, [{ phase: 'necromancy', state: 'running' }]);
   assert.equal(result.report.status, 'RESURRECTED');
   assert.ok(worker.terminated);

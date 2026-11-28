@@ -1,6 +1,8 @@
 // Small DOM helpers. Repository content is untrusted: every string goes through
 // `textContent` / text nodes here, never through innerHTML (requirement 5.4).
 
+import { t, tn } from './lang.js';
+
 export function h(tag, props = {}, ...children) {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
@@ -64,10 +66,10 @@ export function relativeAge(iso, now = new Date()) {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return '';
   const days = Math.floor((now - then) / 86400000);
-  if (days < 1) return 'today';
-  if (days < 31) return `${days} day${days === 1 ? '' : 's'} ago`;
+  if (days < 1) return t('today');
+  if (days < 31) return tn('{n} day ago', '{n} days ago', days);
   const months = Math.floor(days / 30.44);
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+  if (months < 12) return tn('{n} month ago', '{n} months ago', months);
   const years = Math.floor(days / 365.25);
-  return `${years} year${years === 1 ? '' : 's'} ago`;
+  return tn('{n} year ago', '{n} years ago', years);
 }

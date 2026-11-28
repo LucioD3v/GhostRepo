@@ -7,7 +7,9 @@ import { createGitHubClient, GitHubError } from './github.js';
 import { assessListing } from './assess.js';
 import { runInWorker } from './run-worker.js';
 import { applyLang } from './i18n.js';
+import { t, onLangChange } from './lang.js';
 import {
+  phaseName,
   renderAssessment,
   renderProgress,
   updateProgress,
@@ -54,12 +56,15 @@ const els = {
 
 let controller = null; // cancels the active assessment or run
 let disposers = [];
+// Redraws the card on screen (assessment, result or error) in the current language.
+// Null while nothing is shown or while a run is in progress.
+let redraw = null;
 const client = createGitHubClient();
 
 const BASE_TITLE = 'GhostRepo · Raise dead JavaScript repositories';
 
 function setTitle(text) {
-  document.title = text ? `${text} · GhostRepo` : BASE_TITLE;
+  document.title = text ? `${text} · GhostRepo` : t(BASE_TITLE);
 }
 
 function announce(text) {
@@ -73,6 +78,7 @@ function reset() {
   controller = new AbortController();
   disposers.forEach((fn) => fn());
   disposers = [];
+  redraw = null;
   clear(els.out);
   return controller.signal;
 }
@@ -98,7 +104,7 @@ function errorCard(title, message, { retry } = {}) {
     { class: 'card error-card', tabindex: '-1', role: 'alert' },
     h('h2', { text: title }),
     h('p', { text: message }),
-    retry ? h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: retry }, 'Try again')) : null,
+    retry ? h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: retry }, t('Try again'))) : null,
   );
 }
 
@@ -114,9 +120,9 @@ function describeError(e) {
       'file-failed': 'A file could not be downloaded',
       http: 'Unexpected answer from GitHub',
     };
-    return { title: titles[e.code] || 'Something went wrong', message: e.message };
+    return { title: t(titles[e.code] || 'Something went wrong'), message: e.message };
   }
-  return { title: 'Something went wrong', message: e && e.message ? e.message : String(e) };
+  return { title: t('Something went wrong'), message: e && e.message ? e.message : String(e) };
 }
 
 // --- Flow ---------------------------------------------------------------------------
@@ -126,9 +132,9 @@ async function analyze(parsed) {
   const { owner, repo, ref, subfolder } = parsed;
   updateUrl(parsed);
   els.analyze.disabled = true;
-  setTitle(`Assessing ${owner}/${repo}…`);
-  show(h('section', { class: 'card busy', tabindex: '-1', 'aria-busy': 'true' }, h('h2', { text: 'Assessing the repository…' }), h('p', { class: 'muted', text: 'Reading the file listing from GitHub. No code is downloaded or run yet.' })));
-  announce('Assessing the repository');
+  setTitle(t('Assessing {name}…', { name: `${owner}/${repo}` }));
+  show(h('section', { class: 'card busy', tabindex: '-1', 'aria-busy': 'true' }, h('h2', { text: t('Assessing the repository…') }), h('p', { class: 'muted', text: t('Reading the file listing from GitHub. No code is downloaded or run yet.') })));
+  announce(t('Assessing the repository'));
 
   try {
     // Metadata first: a missing repository stops here, and an archived one is
@@ -136,23 +142,31 @@ async function analyze(parsed) {
     const meta = await client.getRepository({ owner, repo }, { signal });
     const commit = await client.resolveCommit({ owner, repo, ref }, { signal });
     const listing = await client.listFiles({ owner, repo, sha: commit.sha, subfolder }, { signal });
-    const assessment = assessListing({ entries: listing.entries, truncated: listing.truncated });
     const target = { owner, repo, ref, subfolder, sha: commit.sha, canonicalUrl: parsed.canonicalUrl, archived: meta.archived, defaultBranch: meta.defaultBranch };
 
-    show(
-      renderAssessment({
-        assessment,
-        commit,
-        target,
-        examples: EXAMPLES,
-        onResurrect: () => resurrect({ target, assessment, listing }),
-        onPickFolder: (folder) => {
-          els.folder.value = folder;
-          els.form.requestSubmit();
-        },
-        onExample: (ex) => useExample(ex),
-      }),
-    );
+    // The assessment text is built in the current language, so a redraw assesses
+    // again, from the listing already fetched (no new request).
+    const showAssessment = ({ focus }) => {
+      const assessment = assessListing({ entries: listing.entries, truncated: listing.truncated });
+      show(
+        renderAssessment({
+          assessment,
+          commit,
+          target,
+          examples: EXAMPLES,
+          onResurrect: () => resurrect({ target, assessment, listing }),
+          onPickFolder: (folder) => {
+            els.folder.value = folder;
+            els.form.requestSubmit();
+          },
+          onExample: (ex) => useExample(ex),
+        }),
+        { focus },
+      );
+      return assessment;
+    };
+    const assessment = showAssessment({ focus: true });
+    redraw = () => showAssessment({ focus: false });
     setTitle(`${owner}/${repo}`);
     announce(`${assessment.headline}.`);
   } catch (e) {
@@ -160,6 +174,10 @@ async function analyze(parsed) {
     const { title, message } = describeError(e);
     setTitle(null);
     show(errorCard(title, message, { retry: () => analyze(parsed) }));
+    redraw = () => {
+      const again = describeError(e);
+      show(errorCard(again.title, again.message, { retry: () => analyze(parsed) }), { focus: false });
+    };
     announce(title);
   } finally {
     if (!signal.aborted) els.analyze.disabled = false;
@@ -170,8 +188,8 @@ async function resurrect({ target, assessment, listing }) {
   const signal = reset();
   const progress = renderProgress();
   show(progress);
-  setTitle(`Resurrecting ${target.owner}/${target.repo}…`);
-  announce('Resurrecting');
+  setTitle(t('Resurrecting {name}…', { name: `${target.owner}/${target.repo}` }));
+  announce(t('Resurrecting'));
   let phase = 'necromancy';
 
   try {
@@ -189,15 +207,14 @@ async function resurrect({ target, assessment, listing }) {
     if (e.name === 'AbortError') return;
     markProgressFailed(progress, phase);
     const { title, message } = describeError(e);
-    const phaseName = { necromancy: 'Necromancy', exorcism: 'Exorcism', transmutation: 'Transmutation', resurrection: 'Resurrection' }[phase];
     // Keep the progress card (with the failed phase marked) under the error card;
     // the error card comes first, so it still gets the focus.
-    show(h('div', { class: 'stack' }, errorCard(`${title} (during ${phaseName})`, message, { retry: () => resurrect({ target, assessment, listing }) }), progress));
-    announce(`${title} during ${phaseName}`);
+    show(h('div', { class: 'stack' }, errorCard(t('{title} (during {phase})', { title, phase: phaseName(phase) }), message, { retry: () => resurrect({ target, assessment, listing }) }), progress));
+    announce(t('{title} during {phase}', { title, phase: phaseName(phase) }));
   }
 }
 
-function showResult({ result, target, assessment }) {
+function showResult({ result, target, assessment }, { focus = true, tab = 'code' } = {}) {
   const { report } = result;
   const ctx = {
     owner: target.owner,
@@ -211,22 +228,30 @@ function showResult({ result, target, assessment }) {
   const parts = [renderSummary(report)];
 
   if (report.status === 'RESURRECTED') {
-    const tabs = [{ id: 'code', label: 'Code', render: () => renderCodeTab(result) }];
-    if (assessment.entryPoint) tabs.push({ id: 'run', label: 'Run', render: () => renderRunTab(result, { onDispose: (fn) => disposers.push(fn) }) });
+    const tabs = [{ id: 'code', label: t('Code'), render: () => renderCodeTab(result) }];
+    if (assessment.entryPoint) tabs.push({ id: 'run', label: t('Run'), render: () => renderRunTab(result, { onDispose: (fn) => disposers.push(fn) }) });
     tabs.push(
-      { id: 'download', label: 'Download', render: () => renderDownloadTab(result, ctx) },
-      { id: 'pr', label: 'Pull request', render: () => renderPrTab(result, ctx) },
+      { id: 'download', label: t('Download'), render: () => renderDownloadTab(result, ctx) },
+      { id: 'pr', label: t('Pull request'), render: () => renderPrTab(result, ctx) },
     );
-    parts.push(renderTabs(tabs, 'code'));
+    parts.push(renderTabs(tabs, tab));
   } else if (report.status === 'NO_CHANGES') {
-    parts.push(renderTabs([{ id: 'code', label: 'Code', render: () => renderCodeTab(result) }], 'code'));
+    parts.push(renderTabs([{ id: 'code', label: t('Code'), render: () => renderCodeTab(result) }], 'code'));
   }
 
-  parts.push(h('div', { class: 'actions again' }, h('button', { type: 'button', onclick: () => { setTitle(null); clear(els.out); els.url.focus(); } }, 'Analyze another repository')));
-  show(h('div', { class: 'stack' }, parts), { focus: true });
-  const statusLabel = { RESURRECTED: `👻 Resurrected ${target.owner}/${target.repo}`, NO_CHANGES: `No changes — ${target.owner}/${target.repo}`, SCANNED_ONLY: `Scanned — ${target.owner}/${target.repo}` }[report.status] || `${target.owner}/${target.repo}`;
+  parts.push(h('div', { class: 'actions again' }, h('button', { type: 'button', onclick: () => { redraw = null; setTitle(null); clear(els.out); els.url.focus(); } }, t('Analyze another repository'))));
+  show(h('div', { class: 'stack' }, parts), { focus });
+  // A redraw keeps the open tab. The Run tab starts over: its frames are rebuilt.
+  redraw = () => {
+    const open = els.out.querySelector('[role="tab"][aria-selected="true"]');
+    disposers.forEach((fn) => fn());
+    disposers = [];
+    showResult({ result, target, assessment }, { focus: false, tab: open ? open.dataset.tab : 'code' });
+  };
+  const name = `${target.owner}/${target.repo}`;
+  const statusLabel = { RESURRECTED: t('👻 Resurrected {name}', { name }), NO_CHANGES: t('No changes — {name}', { name }), SCANNED_ONLY: t('Scanned — {name}', { name }) }[report.status] || name;
   setTitle(statusLabel);
-  announce(`Finished: ${report.status}`);
+  if (focus) announce(t('Finished: {status}', { status: report.status }));
 }
 
 // --- Form and deep links ----------------------------------------------------------------
@@ -261,9 +286,13 @@ els.form.addEventListener('submit', (event) => {
 
 els.url.addEventListener('input', () => formError(''));
 
-for (const ex of EXAMPLES) {
-  els.examples.append(h('button', { type: 'button', class: 'chip', onclick: () => useExample(ex) }, ex.label));
+function renderExampleChips() {
+  clear(els.examples);
+  for (const ex of EXAMPLES) {
+    els.examples.append(h('button', { type: 'button', class: 'chip', onclick: () => useExample(ex) }, t(ex.label)));
+  }
 }
+renderExampleChips();
 
 // --- Language toggle ----------------------------------------------------------------
 
@@ -273,6 +302,17 @@ for (const btn of document.querySelectorAll('.lang-btn')) {
     applyLang(lang);
   });
 }
+
+// applyLang translates the static page; this redraws what main.js built.
+onLangChange(() => {
+  renderExampleChips();
+  if (redraw) redraw();
+  if (!els.message.hidden) {
+    const parsed = parseRepoInput(els.url.value, els.folder.value);
+    if (!parsed.ok) formError(parsed.error.message);
+  }
+  if (!els.out.firstChild) setTitle(null);
+});
 
 // --- Theme toggle -------------------------------------------------------------------
 

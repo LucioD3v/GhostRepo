@@ -4,11 +4,14 @@
 // are accepted. The subfolder rules mirror the CLI's validatePath: never
 // absolute, never `..`, never a leading `-`.
 
+import { t } from './lang.js';
+
 const NAME = /^[A-Za-z0-9_.-]+$/;
 const EXAMPLE = 'https://github.com/owner/repo';
 
-function fail(code, message) {
-  return { ok: false, error: { code, message } };
+// `message` is an English template (see lang.js); {example} is always available.
+function fail(code, message, vars = {}) {
+  return { ok: false, error: { code, message: t(message, { example: EXAMPLE, ...vars }) } };
 }
 
 /**
@@ -42,24 +45,24 @@ export function validateSubfolder(raw) {
 export function parseRepoInput(input, subfolderField = '') {
   const text = String(input ?? '').trim();
   if (text === '') {
-    return fail('empty', `Paste the URL of a GitHub repository, for example ${EXAMPLE}.`);
+    return fail('empty', 'Paste the URL of a GitHub repository, for example {example}.');
   }
 
   let url;
   try {
     url = new URL(text);
   } catch {
-    return fail('not-a-url', `That is not a URL. Use the full address, for example ${EXAMPLE}.`);
+    return fail('not-a-url', 'That is not a URL. Use the full address, for example {example}.');
   }
   if (url.protocol !== 'https:') {
-    return fail('not-https', `Only https:// links are accepted, for example ${EXAMPLE}.`);
+    return fail('not-https', 'Only https:// links are accepted, for example {example}.');
   }
   const host = url.hostname.toLowerCase();
   if (host !== 'github.com' && host !== 'www.github.com') {
-    return fail('not-github', `Only GitHub repositories are supported, for example ${EXAMPLE}.`);
+    return fail('not-github', 'Only GitHub repositories are supported, for example {example}.');
   }
   if (url.username || url.password || url.port) {
-    return fail('not-github', `Remove credentials or ports from the link, for example ${EXAMPLE}.`);
+    return fail('not-github', 'Remove credentials or ports from the link, for example {example}.');
   }
 
   let segments;
@@ -69,13 +72,13 @@ export function parseRepoInput(input, subfolderField = '') {
     return fail('not-a-url', 'The link contains an invalid percent-encoded character.');
   }
   if (segments.length < 2) {
-    return fail('no-repo', `The link must point to a repository, for example ${EXAMPLE}.`);
+    return fail('no-repo', 'The link must point to a repository, for example {example}.');
   }
 
   const owner = segments[0];
   const repo = segments[1].replace(/\.git$/i, '');
   if (!NAME.test(owner) || !NAME.test(repo) || repo === '.' || repo === '..') {
-    return fail('no-repo', `"${segments[0]}/${segments[1]}" is not a valid owner/repository name.`);
+    return fail('no-repo', '"{name}" is not a valid owner/repository name.', { name: `${segments[0]}/${segments[1]}` });
   }
 
   let ref = null;

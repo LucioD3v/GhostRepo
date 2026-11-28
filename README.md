@@ -11,7 +11,7 @@ GhostRepo checks whether it can rise, rewrites legacy patterns with codemods tha
 
 [![Live App](https://img.shields.io/badge/▶%20Try%20it%20live-luciod3v.github.io%2FGhostRepo-7c3aed?style=for-the-badge&logo=github)](https://luciod3v.github.io/GhostRepo/)
 &nbsp;
-[![Tests](https://img.shields.io/badge/tests-155%20passing-22c55e?style=for-the-badge)](test/)
+[![Tests](https://img.shields.io/badge/tests-160%20passing-22c55e?style=for-the-badge)](test/)
 &nbsp;
 [![Built with Kiro](https://img.shields.io/badge/Built%20with-Kiro-f97316?style=for-the-badge)](https://kiro.dev)
 
@@ -148,7 +148,7 @@ On macOS/Linux `./resurrect` works too. The CLI clones the repository, rewrites 
 
 ```bash
 npm ci
-npm test            # unit and integration tests (node:test) — 155 pass
+npm test            # unit and integration tests (node:test) — 160 pass
 npm run web         # build dist/ and serve at http://localhost:8080
 npm run e2e:web     # end-to-end in real Chrome against GitHub (needs Chrome + network)
 ```
@@ -183,10 +183,10 @@ GhostRepo/
 │   └── files.js, walk.js, report.js
 ├── web/                   # Browser-only web app
 │   ├── index.html, style.css
-│   ├── src/               #   GitHub client, assessment, worker, diff, preview, zip, PR kit and link
+│   ├── src/               #   GitHub client, assessment, worker, diff, preview, zip, PR kit and link, EN/ES text
 │   └── shims/             #   Tiny stubs for Node modules the bundle never executes
 ├── scripts/               # build-web, serve-web, e2e-web, guard-legacy (Kiro hook script)
-├── test/                  # node:test suites (155 pass, 1 skipped)
+├── test/                  # node:test suites (160 pass, 1 skipped)
 ├── fixtures/              # legacy-sample.js
 ├── docs/RESURRECT-CLI.md  # CLI design document
 └── .kiro/                 # Kiro steering, specs and hooks

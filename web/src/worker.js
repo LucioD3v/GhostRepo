@@ -5,15 +5,17 @@
 // the progress and the user can start another run, which terminates this worker.
 //
 // Protocol (see run-worker.js):
-//   in:  { type: 'run', target, entries }
+//   in:  { type: 'run', target, entries, lang }
 //   out: { type: 'progress', event } ... then { type: 'done', result } | { type: 'error', error }
 
 import { createGitHubClient } from './github.js';
 import { runResurrection } from './run.js';
+import { setLang } from './lang.js';
 
 self.onmessage = async (msg) => {
   if (!msg.data || msg.data.type !== 'run') return;
-  const { target, entries } = msg.data;
+  const { target, entries, lang } = msg.data;
+  setLang(lang);
   try {
     const result = await runResurrection({
       client: createGitHubClient(),
