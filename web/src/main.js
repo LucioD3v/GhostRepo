@@ -55,6 +55,12 @@ let controller = null; // cancels the active assessment or run
 let disposers = [];
 const client = createGitHubClient();
 
+const BASE_TITLE = 'GhostRepo · Raise dead JavaScript repositories';
+
+function setTitle(text) {
+  document.title = text ? `${text} · GhostRepo` : BASE_TITLE;
+}
+
 function announce(text) {
   els.live.textContent = '';
   // A change of text is what triggers the screen reader; clear first.
@@ -119,6 +125,7 @@ async function analyze(parsed) {
   const { owner, repo, ref, subfolder } = parsed;
   updateUrl(parsed);
   els.analyze.disabled = true;
+  setTitle(`Assessing ${owner}/${repo}…`);
   show(h('section', { class: 'card busy', tabindex: '-1', 'aria-busy': 'true' }, h('h2', { text: 'Assessing the repository…' }), h('p', { class: 'muted', text: 'Reading the file listing from GitHub. No code is downloaded or run yet.' })));
   announce('Assessing the repository');
 
@@ -145,10 +152,12 @@ async function analyze(parsed) {
         onExample: (ex) => useExample(ex),
       }),
     );
+    setTitle(`${owner}/${repo}`);
     announce(`${assessment.headline}.`);
   } catch (e) {
     if (e.name === 'AbortError') return;
     const { title, message } = describeError(e);
+    setTitle(null);
     show(errorCard(title, message, { retry: () => analyze(parsed) }));
     announce(title);
   } finally {
@@ -160,6 +169,7 @@ async function resurrect({ target, assessment, listing }) {
   const signal = reset();
   const progress = renderProgress();
   show(progress);
+  setTitle(`Resurrecting ${target.owner}/${target.repo}…`);
   announce('Resurrecting');
   let phase = 'necromancy';
 
@@ -211,8 +221,10 @@ function showResult({ result, target, assessment }) {
     parts.push(renderTabs([{ id: 'code', label: 'Code', render: () => renderCodeTab(result) }], 'code'));
   }
 
-  parts.push(h('div', { class: 'actions again' }, h('button', { type: 'button', onclick: () => { clear(els.out); els.url.focus(); } }, 'Analyze another repository')));
+  parts.push(h('div', { class: 'actions again' }, h('button', { type: 'button', onclick: () => { setTitle(null); clear(els.out); els.url.focus(); } }, 'Analyze another repository')));
   show(h('div', { class: 'stack' }, parts), { focus: true });
+  const statusLabel = { RESURRECTED: `👻 Resurrected ${target.owner}/${target.repo}`, NO_CHANGES: `No changes — ${target.owner}/${target.repo}`, SCANNED_ONLY: `Scanned — ${target.owner}/${target.repo}` }[report.status] || `${target.owner}/${target.repo}`;
+  setTitle(statusLabel);
   announce(`Finished: ${report.status}`);
 }
 
