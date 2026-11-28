@@ -570,10 +570,8 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
   color-scheme: light;
 }
 
-/* Light theme: plain background, no star field or fog decorations. */
-[data-theme='light'] body {
-  background: var(--bg);
-}
+/* Light theme: star field and fog decorations are off; body background is set by
+   the daytime sky section below when .sky-day is added. */
 [data-theme='light'] body::before {
   display: none;
 }
@@ -611,6 +609,15 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
   box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
 }
 
+/* The form and the hero tombstone have hard-coded dark backgrounds; in daylight they
+   become pale panels and sun-bleached stone so their dark text stays readable. */
+[data-theme='light'] .form {
+  background: rgba(255, 255, 255, .86);
+}
+[data-theme='light'] .tomb {
+  background: linear-gradient(180deg, #ebe6dc, #d8d1c3);
+}
+
 /* Code panes: light grey background. */
 [data-theme='light'] .code-pane,
 [data-theme='light'] .copy-block textarea,
@@ -640,4 +647,166 @@ body:has(#out:not(:empty)) .hero-copy { max-width: 760px; }
 /* Footer in light mode. */
 [data-theme='light'] .foot {
   background: linear-gradient(180deg, transparent, rgba(220, 210, 195, .40));
+}
+
+/* --- Daytime sky (light theme only) ------------------------------------------------ */
+
+/* Hidden by default (dark mode); shown only in light theme. */
+.sky-day {
+  display: none;
+}
+
+/* The body keeps the warm page base; the sky gradient lives on the fixed .sky-day
+   layer, so it stays with the viewport (and the sun) instead of stretching over a
+   long results page. */
+[data-theme='light'] body {
+  background: var(--bg);
+}
+
+/* Sky-blue gradient fading into the warm page base, like looking up at noon. */
+[data-theme='light'] .sky-day {
+  display: block;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(
+    to bottom,
+    #87c4f0 0%,
+    #b8ddf8 18%,
+    #d8eefa 34%,
+    #f5f0e8 55%
+  );
+}
+
+/* Sun: warm yellow-white circle in the top-right, mirroring the moon position. */
+.sun {
+  position: absolute;
+  top: 60px;
+  right: max(4vw, 24px);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%, #fffde0 0%, #fff4a0 30%, #ffd84d 70%, #ffb830 100%);
+  box-shadow:
+    0 0 0 6px  rgba(255, 240, 100, .18),
+    0 0 30px 10px rgba(255, 220, 60, .30),
+    0 0 80px 30px rgba(255, 190, 40, .18),
+    0 0 160px 70px rgba(255, 160, 20, .10);
+  animation: sun-pulse 7s ease-in-out infinite;
+}
+
+@keyframes sun-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 6px  rgba(255, 240, 100, .18),
+      0 0 30px 10px rgba(255, 220, 60, .30),
+      0 0 80px 30px rgba(255, 190, 40, .18),
+      0 0 160px 70px rgba(255, 160, 20, .10);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(255, 240, 100, .24),
+      0 0 44px 16px rgba(255, 220, 60, .40),
+      0 0 110px 44px rgba(255, 190, 40, .24),
+      0 0 200px 90px rgba(255, 160, 20, .14);
+  }
+}
+
+/* Clouds: built from overlapping border-radius shapes. The base element is the
+   widest ellipse; ::before and ::after are the rounded bumps on top. */
+.cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, .92);
+  border-radius: 100px;
+  box-shadow: 0 4px 18px rgba(100, 130, 170, .14);
+}
+.cloud::before,
+.cloud::after {
+  content: '';
+  position: absolute;
+  background: inherit;
+  border-radius: 50%;
+}
+
+/* Cloud 1 — large, upper area, slow drift */
+.cloud-1 {
+  width: 200px; height: 56px;
+  top: 90px; left: -220px;
+  animation: cloud-drift-1 110s linear infinite;
+}
+.cloud-1::before {
+  width: 90px; height: 76px;
+  top: -40px; left: 24px;
+}
+.cloud-1::after {
+  width: 70px; height: 60px;
+  top: -30px; left: 90px;
+}
+
+/* Cloud 2 — medium, mid-height, slightly faster */
+.cloud-2 {
+  width: 150px; height: 44px;
+  top: 180px; left: -180px;
+  animation: cloud-drift-2 80s linear infinite;
+}
+.cloud-2::before {
+  width: 68px; height: 60px;
+  top: -32px; left: 18px;
+}
+.cloud-2::after {
+  width: 55px; height: 48px;
+  top: -24px; left: 70px;
+}
+
+/* Cloud 3 — small, high, fastest */
+.cloud-3 {
+  width: 120px; height: 36px;
+  top: 50px; left: -150px;
+  animation: cloud-drift-3 65s linear infinite;
+}
+.cloud-3::before {
+  width: 54px; height: 50px;
+  top: -28px; left: 14px;
+}
+.cloud-3::after {
+  width: 42px; height: 38px;
+  top: -20px; left: 56px;
+}
+
+/* Cloud 4 — wide and thin, lower, very slow */
+.cloud-4 {
+  width: 240px; height: 46px;
+  top: 240px; left: -270px;
+  animation: cloud-drift-4 95s linear infinite;
+}
+.cloud-4::before {
+  width: 100px; height: 72px;
+  top: -38px; left: 36px;
+}
+.cloud-4::after {
+  width: 76px; height: 58px;
+  top: -28px; left: 116px;
+}
+
+/* Each cloud crosses the whole viewport, from just off the left edge (its left:-width)
+   to just past the right edge, so a loop never pops a cloud into view mid-screen.
+   Negative delays start each one part-way through its trip, staggered. */
+@keyframes cloud-drift-1 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 440px)); } }
+@keyframes cloud-drift-2 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 360px)); } }
+@keyframes cloud-drift-3 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 300px)); } }
+@keyframes cloud-drift-4 { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 540px)); } }
+.cloud-1 { animation-delay: -60s; }
+.cloud-2 { animation-delay: -22s; }
+.cloud-3 { animation-delay: -48s; }
+.cloud-4 { animation-delay: -10s; }
+
+/* Clouds are still visible but stationary when motion is reduced. */
+@media (prefers-reduced-motion: reduce) {
+  .sun { animation: none; }
+  .cloud-1 { animation: none; transform: translateX(30vw); }
+  .cloud-2 { animation: none; transform: translateX(55vw); }
+  .cloud-3 { animation: none; transform: translateX(15vw); }
+  .cloud-4 { animation: none; transform: translateX(70vw); }
 }
